@@ -1,0 +1,11 @@
+[package]
+name = "bitcoind"
+version = "0.1.0"
+authors = ["Riccardo Casatta <riccardo@casatta.it>"]
+description = "Utility to run a regtest bitcoind process, useful in integration testing environment"
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+bitcoincore-rpc = "0.13.0"
+tempfile = "3.1.0"
