@@ -102,8 +102,12 @@ impl Drop for BitcoinD {
     }
 }
 
+/// Returns a non-used local port if available
+/// Note there is a race condition during the time the method check availability and the caller
 fn get_available_port() -> Option<u16> {
-    (1025..65535).find(|port| TcpListener::bind(("127.0.0.1", *port)).is_ok())
+    // using 0 as port let the system assign a port available
+    let t = TcpListener::bind(("127.0.0.1", 0)).ok()?;
+    t.local_addr().ok().map(|s| s.port())
 }
 
 impl From<std::io::Error> for Error {
