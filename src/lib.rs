@@ -15,7 +15,7 @@ use bitcoincore_rpc::{Auth, Client, RpcApi};
 use std::ffi::OsStr;
 use std::net::TcpListener;
 use std::path::PathBuf;
-use std::process::{Child, Command, ExitStatus};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -50,13 +50,13 @@ impl BitcoinD {
     /// Launch the bitcoind process from the given `exe` executable with default args
     /// Waits for the node to be ready before returning
     pub fn new<S: AsRef<OsStr>>(exe: S) -> Result<BitcoinD, Error> {
-        BitcoinD::with_args(exe, vec![])
+        BitcoinD::with_args(exe, vec![], false)
     }
 
     /// Launch the bitcoind process from the given `exe` executable with given `args`
     /// args must be a vector of String containing no spaces like `vec!["-dbcache=100".to_string()]`
     /// Waits for the node to be ready before returning
-    pub fn with_args<S, I>(exe: S, args: I) -> Result<BitcoinD, Error>
+    pub fn with_args<S, I>(exe: S, args: I, view_stdout: bool) -> Result<BitcoinD, Error>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -65,6 +65,11 @@ impl BitcoinD {
         let cookie_file = _work_dir.path().join("regtest").join(".cookie");
         let rpc_port = get_available_port().ok_or(Error::PortUnavailable)?;
         let url = format!("http://127.0.0.1:{}", rpc_port);
+        let stdout = if view_stdout {
+            Stdio::inherit()
+        } else {
+            Stdio::null()
+        };
 
         let process = Command::new(exe)
             .arg(format!("-datadir={}", _work_dir.path().display()))
@@ -73,6 +78,7 @@ impl BitcoinD {
             .arg("-listen=0") // do not connect to p2p
             .arg("-fallbackfee=0.0001")
             .args(args)
+            .stdout(stdout)
             .spawn()?;
 
         let node_url_default = format!("{}/wallet/default", url);
@@ -157,7 +163,7 @@ mod test {
     #[test]
     fn test_getindexinfo() {
         let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
-        let bitcoind = BitcoinD::with_args(exe, vec!["-txindex".to_string()]).unwrap();
+        let bitcoind = BitcoinD::with_args(exe, vec!["-txindex".to_string()], false).unwrap();
         assert!(
             bitcoind.client.version().unwrap() >= 210_000,
             "getindexinfo requires bitcoin >0.21"
