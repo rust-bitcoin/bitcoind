@@ -47,9 +47,20 @@ pub enum Error {
 }
 
 impl BitcoinD {
-    /// Launch the bitcoind process from the given `exe` executable.
+    /// Launch the bitcoind process from the given `exe` executable with default args
     /// Waits for the node to be ready before returning
     pub fn new<S: AsRef<OsStr>>(exe: S) -> Result<BitcoinD, Error> {
+        BitcoinD::with_args(exe, vec![])
+    }
+
+    /// Launch the bitcoind process from the given `exe` executable with given `args`
+    /// args must be a vector of String containing no spaces like `vec!["-dbcache=100".to_string()]`
+    /// Waits for the node to be ready before returning
+    pub fn with_args<S, I>(exe: S, args: I) -> Result<BitcoinD, Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
         let _work_dir = TempDir::new()?;
         let cookie_file = _work_dir.path().join("regtest").join(".cookie");
         let rpc_port = get_available_port().ok_or(Error::PortUnavailable)?;
@@ -61,6 +72,7 @@ impl BitcoinD {
             .arg("-regtest")
             .arg("-listen=0") // do not connect to p2p
             .arg("-fallbackfee=0.0001")
+            .args(args)
             .spawn()?;
 
         let node_url_default = format!("{}/wallet/default", url);
@@ -125,7 +137,9 @@ impl From<bitcoincore_rpc::Error> for Error {
 #[cfg(test)]
 mod test {
     use crate::BitcoinD;
+    use bitcoincore_rpc::jsonrpc::serde_json::Value;
     use bitcoincore_rpc::RpcApi;
+    use std::collections::HashMap;
     use std::env;
 
     #[test]
@@ -138,5 +152,18 @@ mod test {
         let _ = bitcoind.client.generate_to_address(1, &address).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(1, info.blocks);
+    }
+
+    #[test]
+    fn test_getindexinfo() {
+        let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
+        let bitcoind = BitcoinD::with_args(exe, vec!["-txindex".to_string()]).unwrap();
+        assert!(
+            bitcoind.client.version().unwrap() >= 210_000,
+            "getindexinfo requires bitcoin >0.21"
+        );
+        let info: HashMap<String, Value> = bitcoind.client.call("getindexinfo", &[]).unwrap();
+        assert!(info.contains_key("txindex"));
+        assert_eq!(bitcoind.client.version().unwrap(), 210_000);
     }
 }
