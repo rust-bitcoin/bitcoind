@@ -33,6 +33,18 @@ pub struct BitcoinD {
     pub cookie_file: PathBuf,
     /// Url of the rpc of the node, useful for other client to connect to the node
     pub url: String,
+    /// p2p connection url, is some if the node started with p2p enabled
+    pub p2p_url: Option<String>,
+}
+
+/// Enum to specify p2p settings
+pub enum P2P {
+    /// the node doesn't open a p2p port and work in standalone mode
+    No,
+    /// the node open a p2p port
+    Yes,
+    /// The node open a p2p port and also connects to the url given as parameter
+    Connect(String),
 }
 
 /// All the possible error in this crate
@@ -50,13 +62,13 @@ impl BitcoinD {
     /// Launch the bitcoind process from the given `exe` executable with default args
     /// Waits for the node to be ready before returning
     pub fn new<S: AsRef<OsStr>>(exe: S) -> Result<BitcoinD, Error> {
-        BitcoinD::with_args(exe, vec![], false)
+        BitcoinD::with_args(exe, vec![], false, P2P::No)
     }
 
     /// Launch the bitcoind process from the given `exe` executable with given `args`
-    /// args must be a vector of String containing no spaces like `vec!["-dbcache=100".to_string()]`
+    /// args could be a vector of String containing no spaces like `vec!["-dbcache=100".to_string()]`
     /// Waits for the node to be ready before returning
-    pub fn with_args<S, I>(exe: S, args: I, view_stdout: bool) -> Result<BitcoinD, Error>
+    pub fn with_args<S, I>(exe: S, args: I, view_stdout: bool, p2p: P2P) -> Result<BitcoinD, Error>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -65,6 +77,24 @@ impl BitcoinD {
         let cookie_file = _work_dir.path().join("regtest").join(".cookie");
         let rpc_port = get_available_port().ok_or(Error::PortUnavailable)?;
         let url = format!("http://127.0.0.1:{}", rpc_port);
+        let (p2p_args, p2p_url) = match p2p {
+            P2P::No => (vec!["-listen=0".to_string()], None),
+            P2P::Yes => {
+                let p2p_port = get_available_port().ok_or(Error::PortUnavailable)?;
+                let p2p_url = format!("127.0.0.1:{}", p2p_port);
+                let p2p_arg = format!("-port={}", p2p_port);
+                let args = vec![p2p_arg];
+                (args, Some(p2p_url))
+            }
+            P2P::Connect(other_node_url) => {
+                let p2p_port = get_available_port().ok_or(Error::PortUnavailable)?;
+                let p2p_url = format!("127.0.0.1:{}", p2p_port);
+                let p2p_arg = format!("-port={}", p2p_port);
+                let connect = format!("-connect={}", other_node_url);
+                let args = vec![p2p_arg, connect];
+                (args, Some(p2p_url))
+            }
+        };
         let stdout = if view_stdout {
             Stdio::inherit()
         } else {
@@ -75,8 +105,8 @@ impl BitcoinD {
             .arg(format!("-datadir={}", _work_dir.path().display()))
             .arg(format!("-rpcport={}", rpc_port))
             .arg("-regtest")
-            .arg("-listen=0") // do not connect to p2p
             .arg("-fallbackfee=0.0001")
+            .args(p2p_args)
             .args(args)
             .stdout(stdout)
             .spawn()?;
@@ -104,6 +134,7 @@ impl BitcoinD {
             _work_dir,
             cookie_file,
             url,
+            p2p_url,
         })
     }
 
@@ -124,7 +155,7 @@ impl Drop for BitcoinD {
 /// Note there is a race condition during the time the method check availability and the caller
 fn get_available_port() -> Option<u16> {
     // using 0 as port let the system assign a port available
-    let t = TcpListener::bind(("127.0.0.1", 0)).ok()?;
+    let t = TcpListener::bind(("127.0.0.1", 0)).ok()?; // 0 means the OS choose a free port
     t.local_addr().ok().map(|s| s.port())
 }
 
@@ -142,7 +173,7 @@ impl From<bitcoincore_rpc::Error> for Error {
 
 #[cfg(test)]
 mod test {
-    use crate::BitcoinD;
+    use crate::{BitcoinD, P2P};
     use bitcoincore_rpc::jsonrpc::serde_json::Value;
     use bitcoincore_rpc::RpcApi;
     use std::collections::HashMap;
@@ -163,7 +194,8 @@ mod test {
     #[test]
     fn test_getindexinfo() {
         let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
-        let bitcoind = BitcoinD::with_args(exe, vec!["-txindex".to_string()], false).unwrap();
+        let bitcoind =
+            BitcoinD::with_args(exe, vec!["-txindex".to_string()], false, P2P::No).unwrap();
         assert!(
             bitcoind.client.version().unwrap() >= 210_000,
             "getindexinfo requires bitcoin >0.21"
@@ -171,5 +203,21 @@ mod test {
         let info: HashMap<String, Value> = bitcoind.client.call("getindexinfo", &[]).unwrap();
         assert!(info.contains_key("txindex"));
         assert_eq!(bitcoind.client.version().unwrap(), 210_000);
+    }
+
+    #[test]
+    fn test_p2p() {
+        let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
+        let bitcoind = BitcoinD::with_args(exe.clone(), vec![], false, P2P::Yes).unwrap();
+        assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 0);
+        let other_bitcoind = BitcoinD::with_args(
+            exe,
+            vec![],
+            false,
+            P2P::Connect(bitcoind.p2p_url.clone().unwrap()),
+        )
+        .unwrap();
+        assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 1);
+        assert_eq!(other_bitcoind.client.get_peer_info().unwrap().len(), 1);
     }
 }
