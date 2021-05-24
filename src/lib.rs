@@ -20,6 +20,9 @@ use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
 
+pub extern crate bitcoincore_rpc;
+pub extern crate tempfile;
+
 /// Struct representing the bitcoind process with related information
 pub struct BitcoinD {
     /// Process child handle, used to terminate the process when this struct is dropped
@@ -32,7 +35,7 @@ pub struct BitcoinD {
     /// Path to the node cookie file, useful for other client to connect to the node
     pub cookie_file: PathBuf,
     /// Url of the rpc of the node, useful for other client to connect to the node
-    pub url: String,
+    pub rpc_url: String,
     /// p2p connection url, is some if the node started with p2p enabled
     pub p2p_url: Option<String>,
 }
@@ -50,8 +53,6 @@ pub enum P2P {
 /// All the possible error in this crate
 #[derive(Debug)]
 pub enum Error {
-    /// No port available on the system
-    PortUnavailable,
     /// Wrapper of io Error
     Io(std::io::Error),
     /// Wrapper of bitcoincore_rpc Error
@@ -66,28 +67,33 @@ impl BitcoinD {
     }
 
     /// Launch the bitcoind process from the given `exe` executable with given `args`
-    /// args could be a vector of String containing no spaces like `vec!["-dbcache=100".to_string()]`
     /// Waits for the node to be ready before returning
+    /// `args` could be a vector of String containing no spaces like `vec!["-dbcache=100".to_string()]`
+    /// `view_stdout` true will not suppress bitcoind log output
+    /// `p2p` allows to specify options to open p2p port or connect to the another node
+    /// `datadir` when None a temp directory is created as datadir, it will be deleted on drop
+    ///  provide a directory when you don't want auto deletion (maybe because you can't control
     pub fn with_args<S, I>(exe: S, args: I, view_stdout: bool, p2p: P2P) -> Result<BitcoinD, Error>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
         let _work_dir = TempDir::new()?;
-        let cookie_file = _work_dir.path().join("regtest").join(".cookie");
-        let rpc_port = get_available_port().ok_or(Error::PortUnavailable)?;
+        let datadir_path = _work_dir.path().to_path_buf();
+        let cookie_file = datadir_path.join("regtest").join(".cookie");
+        let rpc_port = get_available_port()?;
         let url = format!("http://127.0.0.1:{}", rpc_port);
         let (p2p_args, p2p_url) = match p2p {
             P2P::No => (vec!["-listen=0".to_string()], None),
             P2P::Yes => {
-                let p2p_port = get_available_port().ok_or(Error::PortUnavailable)?;
+                let p2p_port = get_available_port()?;
                 let p2p_url = format!("127.0.0.1:{}", p2p_port);
                 let p2p_arg = format!("-port={}", p2p_port);
                 let args = vec![p2p_arg];
                 (args, Some(p2p_url))
             }
             P2P::Connect(other_node_url) => {
-                let p2p_port = get_available_port().ok_or(Error::PortUnavailable)?;
+                let p2p_port = get_available_port()?;
                 let p2p_url = format!("127.0.0.1:{}", p2p_port);
                 let p2p_arg = format!("-port={}", p2p_port);
                 let connect = format!("-connect={}", other_node_url);
@@ -102,7 +108,7 @@ impl BitcoinD {
         };
 
         let process = Command::new(exe)
-            .arg(format!("-datadir={}", _work_dir.path().display()))
+            .arg(format!("-datadir={}", datadir_path.display()))
             .arg(format!("-rpcport={}", rpc_port))
             .arg("-regtest")
             .arg("-fallbackfee=0.0001")
@@ -133,7 +139,7 @@ impl BitcoinD {
             client,
             _work_dir,
             cookie_file,
-            url,
+            rpc_url: url,
             p2p_url,
         })
     }
@@ -153,10 +159,10 @@ impl Drop for BitcoinD {
 
 /// Returns a non-used local port if available
 /// Note there is a race condition during the time the method check availability and the caller
-fn get_available_port() -> Option<u16> {
+pub fn get_available_port() -> Result<u16, Error> {
     // using 0 as port let the system assign a port available
-    let t = TcpListener::bind(("127.0.0.1", 0)).ok()?; // 0 means the OS choose a free port
-    t.local_addr().ok().map(|s| s.port())
+    let t = TcpListener::bind(("127.0.0.1", 0))?; // 0 means the OS choose a free port
+    Ok(t.local_addr().map(|s| s.port())?)
 }
 
 impl From<std::io::Error> for Error {
