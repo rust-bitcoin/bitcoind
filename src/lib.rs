@@ -13,7 +13,7 @@
 
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use std::ffi::OsStr;
-use std::net::TcpListener;
+use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::thread;
@@ -35,9 +35,9 @@ pub struct BitcoinD {
     /// Path to the node cookie file, useful for other client to connect to the node
     pub cookie_file: PathBuf,
     /// Url of the rpc of the node, useful for other client to connect to the node
-    pub rpc_url: String,
+    pub rpc_socket: SocketAddrV4,
     /// p2p connection url, is some if the node started with p2p enabled
-    pub p2p_url: Option<String>,
+    pub p2p_socket: Option<SocketAddrV4>,
 }
 
 /// Enum to specify p2p settings
@@ -47,7 +47,7 @@ pub enum P2P {
     /// the node open a p2p port
     Yes,
     /// The node open a p2p port and also connects to the url given as parameter
-    Connect(String),
+    Connect(SocketAddrV4),
 }
 
 /// All the possible error in this crate
@@ -58,6 +58,8 @@ pub enum Error {
     /// Wrapper of bitcoincore_rpc Error
     Rpc(bitcoincore_rpc::Error),
 }
+
+const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
 impl BitcoinD {
     /// Launch the bitcoind process from the given `exe` executable with default args
@@ -82,23 +84,24 @@ impl BitcoinD {
         let datadir_path = _work_dir.path().to_path_buf();
         let cookie_file = datadir_path.join("regtest").join(".cookie");
         let rpc_port = get_available_port()?;
-        let url = format!("http://127.0.0.1:{}", rpc_port);
-        let (p2p_args, p2p_url) = match p2p {
+        let rpc_socket = SocketAddrV4::new(LOCAL_IP, rpc_port);
+        let rpc_url = format!("http://{}", rpc_socket);
+        let (p2p_args, p2p_socket) = match p2p {
             P2P::No => (vec!["-listen=0".to_string()], None),
             P2P::Yes => {
                 let p2p_port = get_available_port()?;
-                let p2p_url = format!("127.0.0.1:{}", p2p_port);
+                let p2p_socket = SocketAddrV4::new(LOCAL_IP, p2p_port);
                 let p2p_arg = format!("-port={}", p2p_port);
                 let args = vec![p2p_arg];
-                (args, Some(p2p_url))
+                (args, Some(p2p_socket))
             }
             P2P::Connect(other_node_url) => {
                 let p2p_port = get_available_port()?;
-                let p2p_url = format!("127.0.0.1:{}", p2p_port);
+                let p2p_socket = SocketAddrV4::new(LOCAL_IP, p2p_port);
                 let p2p_arg = format!("-port={}", p2p_port);
                 let connect = format!("-connect={}", other_node_url);
                 let args = vec![p2p_arg, connect];
-                (args, Some(p2p_url))
+                (args, Some(p2p_socket))
             }
         };
         let stdout = if view_stdout {
@@ -117,12 +120,12 @@ impl BitcoinD {
             .stdout(stdout)
             .spawn()?;
 
-        let node_url_default = format!("{}/wallet/default", url);
+        let node_url_default = format!("{}/wallet/default", rpc_url);
         // wait bitcoind is ready, use default wallet
         let client = loop {
             thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
-            let client_result = Client::new(url.clone(), Auth::CookieFile(cookie_file.clone()));
+            let client_result = Client::new(rpc_url.clone(), Auth::CookieFile(cookie_file.clone()));
             if let Ok(client_base) = client_result {
                 if client_base.get_blockchain_info().is_ok() {
                     client_base
@@ -139,8 +142,8 @@ impl BitcoinD {
             client,
             _work_dir,
             cookie_file,
-            rpc_url: url,
-            p2p_url,
+            rpc_socket,
+            p2p_socket,
         })
     }
 
@@ -179,11 +182,20 @@ impl From<bitcoincore_rpc::Error> for Error {
 
 #[cfg(test)]
 mod test {
-    use crate::{BitcoinD, P2P};
+    use crate::{get_available_port, BitcoinD, LOCAL_IP, P2P};
     use bitcoincore_rpc::jsonrpc::serde_json::Value;
     use bitcoincore_rpc::RpcApi;
     use std::collections::HashMap;
     use std::env;
+    use std::net::SocketAddrV4;
+
+    #[test]
+    fn test_local_ip() {
+        assert_eq!("127.0.0.1", format!("{}", LOCAL_IP));
+        let port = get_available_port().unwrap();
+        let socket = SocketAddrV4::new(LOCAL_IP, port);
+        assert_eq!(format!("127.0.0.1:{}", port), format!("{}", socket));
+    }
 
     #[test]
     fn test_bitcoind() {
@@ -220,7 +232,7 @@ mod test {
             exe,
             vec![],
             false,
-            P2P::Connect(bitcoind.p2p_url.clone().unwrap()),
+            P2P::Connect(bitcoind.p2p_socket.clone().unwrap()),
         )
         .unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 1);
