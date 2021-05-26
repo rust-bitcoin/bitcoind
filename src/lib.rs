@@ -148,8 +148,8 @@ impl BitcoinD {
     }
 
     /// Returns the rpc URL including the schema eg. http://127.0.0.1:44842
-    pub fn rpc_url(&self) -> Result<String, Error> {
-        Ok(format!("http://{}", self.rpc_socket))
+    pub fn rpc_url(&self) -> String {
+        format!("http://{}", self.rpc_socket)
     }
 
     /// Stop the node, waiting correct process termination
