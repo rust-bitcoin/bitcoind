@@ -33,6 +33,16 @@ pub struct BitcoinD {
     /// Work directory, where the node store blocks and other stuff. It is kept in the struct so that
     /// directory is deleted only when this struct is dropped
     _work_dir: TempDir,
+
+    /// Node configuration, contains information to connect to this node
+    pub config: Config,
+}
+
+#[derive(Debug, Clone)]
+/// Contains all the information to connect to this node
+pub struct Config {
+    /// Path to the node datadir
+    pub datadir: PathBuf,
     /// Path to the node cookie file, useful for other client to connect to the node
     pub cookie_file: PathBuf,
     /// Url of the rpc of the node, useful for other client to connect to the node
@@ -87,8 +97,8 @@ impl BitcoinD {
         S: AsRef<OsStr>,
     {
         let _work_dir = TempDir::new()?;
-        let datadir_path = _work_dir.path().to_path_buf();
-        let cookie_file = datadir_path.join("regtest").join(".cookie");
+        let datadir = _work_dir.path().to_path_buf();
+        let cookie_file = datadir.join("regtest").join(".cookie");
         let rpc_port = get_available_port()?;
         let rpc_socket = SocketAddrV4::new(LOCAL_IP, rpc_port);
         let rpc_url = format!("http://{}", rpc_socket);
@@ -116,7 +126,7 @@ impl BitcoinD {
             Stdio::null()
         };
 
-        let datadir_arg = format!("-datadir={}", datadir_path.display());
+        let datadir_arg = format!("-datadir={}", datadir.display());
         let rpc_arg = format!("-rpcport={}", rpc_port);
         let default_args = [&datadir_arg, &rpc_arg, "-regtest", "-fallbackfee=0.0001"];
 
@@ -154,20 +164,23 @@ impl BitcoinD {
             process,
             client,
             _work_dir,
-            cookie_file,
-            rpc_socket,
-            p2p_socket,
+            config: Config {
+                datadir,
+                cookie_file,
+                rpc_socket,
+                p2p_socket,
+            },
         })
     }
 
     /// Returns the rpc URL including the schema eg. http://127.0.0.1:44842
     pub fn rpc_url(&self) -> String {
-        format!("http://{}", self.rpc_socket)
+        format!("http://{}", self.config.rpc_socket)
     }
 
     /// Returns the [P2P] enum to connect to this node p2p port
     pub fn p2p_connect(&self) -> Option<P2P> {
-        self.p2p_socket.map(P2P::Connect)
+        self.config.p2p_socket.map(P2P::Connect)
     }
 
     /// Stop the node, waiting correct process termination
