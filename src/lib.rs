@@ -152,6 +152,11 @@ impl BitcoinD {
         format!("http://{}", self.rpc_socket)
     }
 
+    /// Returns the [P2P] enum to connect to this node p2p port
+    pub fn p2p_connect(&self) -> Option<P2P> {
+        self.p2p_socket.map(P2P::Connect)
+    }
+
     /// Stop the node, waiting correct process termination
     pub fn stop(&mut self) -> Result<ExitStatus, Error> {
         self.client.stop()?;
@@ -233,13 +238,8 @@ mod test {
         let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
         let bitcoind = BitcoinD::with_args(exe.clone(), vec![], false, P2P::Yes).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 0);
-        let other_bitcoind = BitcoinD::with_args(
-            exe,
-            vec![],
-            false,
-            P2P::Connect(bitcoind.p2p_socket.clone().unwrap()),
-        )
-        .unwrap();
+        let other_bitcoind =
+            BitcoinD::with_args(exe, vec![], false, bitcoind.p2p_connect().unwrap()).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 1);
         assert_eq!(other_bitcoind.client.get_peer_info().unwrap().len(), 1);
     }
