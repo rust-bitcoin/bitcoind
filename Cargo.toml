@@ -11,3 +11,7 @@ edition = "2018"
 [dependencies]
 bitcoincore-rpc = "0.13.0"
 tempfile = "3.1.0"
+log = "0.4.14"
+
+[dev-dependencies]
+env_logger = "0.8.3"

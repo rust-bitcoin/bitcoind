@@ -12,6 +12,7 @@
 //! ```
 
 use bitcoincore_rpc::{Auth, Client, RpcApi};
+use log::debug;
 use std::ffi::OsStr;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
@@ -75,7 +76,12 @@ impl BitcoinD {
     /// `p2p` allows to specify options to open p2p port or connect to the another node
     /// `datadir` when None a temp directory is created as datadir, it will be deleted on drop
     ///  provide a directory when you don't want auto deletion (maybe because you can't control
-    pub fn with_args<S, I>(exe: S, args: I, view_stdout: bool, p2p: P2P) -> Result<BitcoinD, Error>
+    pub fn with_args<S, I>(
+        exe: S,
+        custom_args: I,
+        view_stdout: bool,
+        p2p: P2P,
+    ) -> Result<BitcoinD, Error>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -110,13 +116,20 @@ impl BitcoinD {
             Stdio::null()
         };
 
+        let datadir_arg = format!("-datadir={}", datadir_path.display());
+        let rpc_arg = format!("-rpcport={}", rpc_port);
+        let default_args = [&datadir_arg, &rpc_arg, "-regtest", "-fallbackfee=0.0001"];
+
+        debug!(
+            "launching {:?} with args: {:?} {:?} AND custom args",
+            exe.as_ref(),
+            default_args,
+            p2p_args
+        );
         let process = Command::new(exe)
-            .arg(format!("-datadir={}", datadir_path.display()))
-            .arg(format!("-rpcport={}", rpc_port))
-            .arg("-regtest")
-            .arg("-fallbackfee=0.0001")
-            .args(p2p_args)
-            .args(args)
+            .args(&default_args)
+            .args(&p2p_args)
+            .args(custom_args)
             .stdout(stdout)
             .spawn()?;
 
@@ -209,7 +222,7 @@ mod test {
 
     #[test]
     fn test_bitcoind() {
-        let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
+        let exe = init();
         let bitcoind = BitcoinD::new(exe).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(0, info.blocks);
@@ -221,7 +234,7 @@ mod test {
 
     #[test]
     fn test_getindexinfo() {
-        let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
+        let exe = init();
         let bitcoind =
             BitcoinD::with_args(exe, vec!["-txindex".to_string()], false, P2P::No).unwrap();
         assert!(
@@ -235,12 +248,17 @@ mod test {
 
     #[test]
     fn test_p2p() {
-        let exe = env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set");
+        let exe = init();
         let bitcoind = BitcoinD::with_args(exe.clone(), vec![], false, P2P::Yes).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 0);
         let other_bitcoind =
             BitcoinD::with_args(exe, vec![], false, bitcoind.p2p_connect().unwrap()).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 1);
         assert_eq!(other_bitcoind.client.get_peer_info().unwrap().len(), 1);
+    }
+
+    fn init() -> String {
+        let _ = env_logger::try_init();
+        env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set")
     }
 }
