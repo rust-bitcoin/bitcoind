@@ -90,10 +90,10 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 /// };
 /// ```
 pub struct Conf<'a> {
-    args: Vec<&'a str>,
-    view_stdout: bool,
-    p2p: P2P,
-    network: &'a str,
+    pub args: Vec<&'a str>,
+    pub view_stdout: bool,
+    pub p2p: P2P,
+    pub network: &'a str,
 }
 
 impl Default for Conf<'_> {
@@ -251,6 +251,15 @@ mod test {
         let port = get_available_port().unwrap();
         let socket = SocketAddrV4::new(LOCAL_IP, port);
         assert_eq!(format!("127.0.0.1:{}", port), format!("{}", socket));
+    }
+
+    #[test]
+    fn test_default() {
+        let conf = Conf {
+            p2p: P2P::Yes,
+            ..Default::default()
+        };
+        assert_eq!("regtest", conf.network);
     }
 
     #[test]
