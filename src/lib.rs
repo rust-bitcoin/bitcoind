@@ -34,13 +34,13 @@ pub struct BitcoinD {
     /// directory is deleted only when this struct is dropped
     _work_dir: TempDir,
 
-    /// Node configuration, contains information to connect to this node
-    pub config: Config,
+    /// Contains information to connect to this node
+    pub params: ConnectParams,
 }
 
 #[derive(Debug, Clone)]
 /// Contains all the information to connect to this node
-pub struct Config {
+pub struct ConnectParams {
     /// Path to the node datadir
     pub datadir: PathBuf,
     /// Path to the node cookie file, useful for other client to connect to the node
@@ -72,44 +72,47 @@ pub enum Error {
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
-/// default args, used in default setting in [BitcoinD::new] and useful for custom call to
-/// [BitcoinD::with_args] to initialize `args` parameter
-pub const DEFAULT_ARGS: [&str; 2] = ["-regtest", "-fallbackfee=0.0001"];
+/// The node configuration parameters, implements a convenient [Default] for most common use.
+/// * `args` vector of String containing no spaces like `vec!["-dbcache=300", "-regtest"]`, note that
+/// `port`,`connect`,`datadir`,`listen` cannot be used cause they are automatically initialized.
+/// * `view_stdout` true will not suppress bitcoind log output
+/// * `p2p` allows to specify options to open p2p port or connect to the another node
+/// * `network` must match what specified in args without dashes, needed to locate the cookie file
+/// directory with different/esoteric networks
+pub struct Conf<'a> {
+    args: Vec<&'a str>,
+    view_stdout: bool,
+    p2p: P2P,
+    network: &'a str,
+}
+
+impl Default for Conf<'_> {
+    fn default() -> Self {
+        Conf {
+            args: vec!["-regtest", "-fallbackfee=0.0001"],
+            view_stdout: false,
+            p2p: P2P::No,
+            network: "regtest",
+        }
+    }
+}
 
 impl BitcoinD {
     /// Launch the bitcoind process from the given `exe` executable with default args
     /// Waits for the node to be ready to accept connections before returning
     pub fn new<S: AsRef<OsStr>>(exe: S) -> Result<BitcoinD, Error> {
-        BitcoinD::with_args(exe, &DEFAULT_ARGS, false, P2P::No)
+        BitcoinD::with_conf(exe, &Conf::default())
     }
 
-    /// Launch the bitcoind process from the given `exe` executable with given `args`
-    /// Waits for the node to be ready before returning
-    /// `args` could be a vector of String containing no spaces like `&["-txindex"]`,
-    /// see [DEFAULT_ARGS] for a possible initialization, note some parameter like: `rpcport`,
-    /// `port`,`connect`,`datadir`,`listen` cannot be used cause they are automatically initialized.
-    /// `view_stdout` true will not suppress bitcoind log output
-    /// `p2p` allows to specify options to open p2p port or connect to the another node
-    /// `datadir` when None a temp directory is created as datadir, it will be deleted on drop
-    ///  provide a directory when you don't want auto deletion (maybe because you can't control
-    pub fn with_args<S, I, T>(
-        exe: S,
-        args: I,
-        view_stdout: bool,
-        p2p: P2P,
-    ) -> Result<BitcoinD, Error>
-    where
-        I: IntoIterator<Item = T>,
-        T: AsRef<OsStr>,
-        S: AsRef<OsStr>,
-    {
+    /// Launch the bitcoind process from the given `exe` executable with given `conf` param
+    pub fn with_conf<S: AsRef<OsStr>>(exe: S, conf: &Conf) -> Result<BitcoinD, Error> {
         let _work_dir = TempDir::new()?;
         let datadir = _work_dir.path().to_path_buf();
-        let cookie_file = datadir.join("regtest").join(".cookie");
+        let cookie_file = datadir.join(conf.network).join(".cookie");
         let rpc_port = get_available_port()?;
         let rpc_socket = SocketAddrV4::new(LOCAL_IP, rpc_port);
         let rpc_url = format!("http://{}", rpc_socket);
-        let (p2p_args, p2p_socket) = match p2p {
+        let (p2p_args, p2p_socket) = match conf.p2p {
             P2P::No => (vec!["-listen=0".to_string()], None),
             P2P::Yes => {
                 let p2p_port = get_available_port()?;
@@ -127,7 +130,7 @@ impl BitcoinD {
                 (args, Some(p2p_socket))
             }
         };
-        let stdout = if view_stdout {
+        let stdout = if conf.view_stdout {
             Stdio::inherit()
         } else {
             Stdio::null()
@@ -146,7 +149,7 @@ impl BitcoinD {
         let process = Command::new(exe)
             .args(&default_args)
             .args(&p2p_args)
-            .args(args)
+            .args(&conf.args)
             .stdout(stdout)
             .spawn()?;
 
@@ -171,7 +174,7 @@ impl BitcoinD {
             process,
             client,
             _work_dir,
-            config: Config {
+            params: ConnectParams {
                 datadir,
                 cookie_file,
                 rpc_socket,
@@ -182,12 +185,12 @@ impl BitcoinD {
 
     /// Returns the rpc URL including the schema eg. http://127.0.0.1:44842
     pub fn rpc_url(&self) -> String {
-        format!("http://{}", self.config.rpc_socket)
+        format!("http://{}", self.params.rpc_socket)
     }
 
     /// Returns the [P2P] enum to connect to this node p2p port
     pub fn p2p_connect(&self) -> Option<P2P> {
-        self.config.p2p_socket.map(P2P::Connect)
+        self.params.p2p_socket.map(P2P::Connect)
     }
 
     /// Stop the node, waiting correct process termination
@@ -225,7 +228,7 @@ impl From<bitcoincore_rpc::Error> for Error {
 
 #[cfg(test)]
 mod test {
-    use crate::{get_available_port, BitcoinD, DEFAULT_ARGS, LOCAL_IP, P2P};
+    use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::jsonrpc::serde_json::Value;
     use bitcoincore_rpc::RpcApi;
     use std::collections::HashMap;
@@ -255,9 +258,9 @@ mod test {
     #[test]
     fn test_getindexinfo() {
         let exe = init();
-        let mut args = DEFAULT_ARGS.to_vec();
-        args.push("-txindex");
-        let bitcoind = BitcoinD::with_args(&exe, args, false, P2P::No).unwrap();
+        let mut conf = Conf::default();
+        conf.args.push("-txindex");
+        let bitcoind = BitcoinD::with_conf(&exe, &conf).unwrap();
         assert!(
             bitcoind.client.version().unwrap() >= 210_000,
             "getindexinfo requires bitcoin >0.21"
@@ -270,11 +273,17 @@ mod test {
     #[test]
     fn test_p2p() {
         let exe = init();
-        let bitcoind = BitcoinD::with_args(&exe, &DEFAULT_ARGS, false, P2P::Yes).unwrap();
+        let conf = Conf {
+            p2p: P2P::Yes,
+            ..Default::default()
+        };
+        let bitcoind = BitcoinD::with_conf(&exe, &conf).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 0);
-        let other_bitcoind =
-            BitcoinD::with_args(&exe, &DEFAULT_ARGS, false, bitcoind.p2p_connect().unwrap())
-                .unwrap();
+        let other_conf = Conf {
+            p2p: bitcoind.p2p_connect().unwrap(),
+            ..Default::default()
+        };
+        let other_bitcoind = BitcoinD::with_conf(&exe, &other_conf).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 1);
         assert_eq!(other_bitcoind.client.get_peer_info().unwrap().len(), 1);
     }
