@@ -79,6 +79,16 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 /// * `p2p` allows to specify options to open p2p port or connect to the another node
 /// * `network` must match what specified in args without dashes, needed to locate the cookie file
 /// directory with different/esoteric networks
+///
+/// Default values:
+/// ```no_run
+/// bitcoind::Conf {
+///     args: vec!["-regtest", "-fallbackfee=0.0001"],
+///     view_stdout: false,
+///     p2p: bitcoind::P2P::No,
+///     network: "regtest",
+/// };
+/// ```
 pub struct Conf<'a> {
     args: Vec<&'a str>,
     view_stdout: bool,
@@ -104,7 +114,7 @@ impl BitcoinD {
         BitcoinD::with_conf(exe, &Conf::default())
     }
 
-    /// Launch the bitcoind process from the given `exe` executable with given `conf` param
+    /// Launch the bitcoind process from the given `exe` executable with given [Conf] param
     pub fn with_conf<S: AsRef<OsStr>>(exe: S, conf: &Conf) -> Result<BitcoinD, Error> {
         let _work_dir = TempDir::new()?;
         let datadir = _work_dir.path().to_path_buf();
