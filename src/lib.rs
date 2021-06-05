@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 
 //!
 //! Bitcoind
@@ -11,6 +11,7 @@
 //! assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 //! ```
 
+use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use log::debug;
 use std::ffi::OsStr;
@@ -57,7 +58,8 @@ pub enum P2P {
     No,
     /// the node open a p2p port
     Yes,
-    /// The node open a p2p port and also connects to the url given as parameter
+    /// The node open a p2p port and also connects to the url given as parameter, it's handy to
+    /// initialize this with [BitcoinD::p2p_connect] of another node.
     Connect(SocketAddrV4),
 }
 
@@ -73,12 +75,6 @@ pub enum Error {
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
 /// The node configuration parameters, implements a convenient [Default] for most common use.
-/// * `args` vector of String containing no spaces like `vec!["-dbcache=300", "-regtest"]`, note that
-/// `port`,`connect`,`datadir`,`listen` cannot be used cause they are automatically initialized.
-/// * `view_stdout` true will not suppress bitcoind log output
-/// * `p2p` allows to specify options to open p2p port or connect to the another node
-/// * `network` must match what specified in args without dashes, needed to locate the cookie file
-/// directory with different/esoteric networks
 ///
 /// Default values:
 /// ```no_run
@@ -90,9 +86,19 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 /// };
 /// ```
 pub struct Conf<'a> {
+    /// Bitcoind command line arguments containing no spaces like `vec!["-dbcache=300", "-regtest"]`
+    /// note that `port`, `rpcport`, `connect`, `datadir`, `listen` cannot be used cause they are
+    /// automatically initialized.
     pub args: Vec<&'a str>,
+
+    /// if `true` bitcoind log output will not be suppressed
     pub view_stdout: bool,
+
+    /// Allows to specify options to open p2p port or connect to the another node
     pub p2p: P2P,
+
+    /// Must match what specified in args without dashes, needed to locate the cookie file
+    /// directory with different/esoteric networks
     pub network: &'a str,
 }
 
@@ -108,7 +114,8 @@ impl Default for Conf<'_> {
 }
 
 impl BitcoinD {
-    /// Launch the bitcoind process from the given `exe` executable with default args
+    /// Launch the bitcoind process from the given `exe` executable with default args.
+    ///
     /// Waits for the node to be ready to accept connections before returning
     pub fn new<S: AsRef<OsStr>>(exe: S) -> Result<BitcoinD, Error> {
         BitcoinD::with_conf(exe, &Conf::default())
@@ -170,7 +177,10 @@ impl BitcoinD {
             assert!(process.stderr.is_none());
             let client_result = Client::new(rpc_url.clone(), Auth::CookieFile(cookie_file.clone()));
             if let Ok(client_base) = client_result {
-                if client_base.get_blockchain_info().is_ok() {
+                // RpcApi has get_blockchain_info method, however being generic with `Value` allows
+                // to be compatible with different version, in the end we are only interested if
+                // the call is succesfull not in the returned value.
+                if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
                     client_base
                         .create_wallet("default", None, None, None, None)
                         .unwrap();
@@ -216,7 +226,8 @@ impl Drop for BitcoinD {
     }
 }
 
-/// Returns a non-used local port if available
+/// Returns a non-used local port if available.
+///
 /// Note there is a race condition during the time the method check availability and the caller
 pub fn get_available_port() -> Result<u16, Error> {
     // using 0 as port let the system assign a port available
