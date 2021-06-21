@@ -4,25 +4,37 @@ on: [push]
 
 env:
   CARGO_TERM_COLOR: always
-  BITCOIN_VER: 0.21.0
 
 jobs:
 
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04, macos-10.15 ]
+        feature: [ "0.21.1", "0.21.0", "0.20.1", "0.20.0", "0.19.1", "0.19.0.1", "0.18.1", "0.18.0", "0.17.1"]
 
     steps:
       - uses: actions/checkout@v2
+      - name: cache
+        uses: actions/cache@v2
+        with:
+          path: target
+          key: ${{ matrix.os }}-${{ matrix.feature }}-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-      - run: echo "BITCOIND_EXE=${{ github.workspace }}/bitcoin-${{ env.BITCOIN_VER }}/bin/bitcoind" >> $GITHUB_ENV
-      - run: curl https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VER/bitcoin-$BITCOIN_VER-x86_64-linux-gnu.tar.gz | tar -xvz bitcoin-$BITCOIN_VER/bin/bitcoind
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args:  --verbose
+          args: --verbose --features ${{ matrix.feature }}
+      - run: echo "BITCOIND_EXE=${{ github.workspace }}/target/bitcoin-${{ matrix.feature }}/bin/bitcoind" >> $GITHUB_ENV
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
 
   cosmetics:
     runs-on: ubuntu-20.04

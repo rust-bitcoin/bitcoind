@@ -11,6 +11,10 @@
 //! assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 //! ```
 
+mod versions;
+
+pub use versions::downloaded_exe_path;
+
 use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use log::debug;
@@ -249,10 +253,9 @@ impl From<bitcoincore_rpc::Error> for Error {
 
 #[cfg(test)]
 mod test {
+    use crate::versions::downloaded_exe_path;
     use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
-    use bitcoincore_rpc::jsonrpc::serde_json::Value;
     use bitcoincore_rpc::RpcApi;
-    use std::collections::HashMap;
     use std::env;
     use std::net::SocketAddrV4;
 
@@ -286,6 +289,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(any(feature = "0.21.0", feature = "0.21.1"))]
     fn test_getindexinfo() {
         let exe = init();
         let mut conf = Conf::default();
@@ -295,9 +299,10 @@ mod test {
             bitcoind.client.version().unwrap() >= 210_000,
             "getindexinfo requires bitcoin >0.21"
         );
-        let info: HashMap<String, Value> = bitcoind.client.call("getindexinfo", &[]).unwrap();
+        let info: std::collections::HashMap<String, bitcoincore_rpc::jsonrpc::serde_json::Value> =
+            bitcoind.client.call("getindexinfo", &[]).unwrap();
         assert!(info.contains_key("txindex"));
-        assert_eq!(bitcoind.client.version().unwrap(), 210_000);
+        assert!(bitcoind.client.version().unwrap() >= 210_000);
     }
 
     #[test]
@@ -320,6 +325,12 @@ mod test {
 
     fn init() -> String {
         let _ = env_logger::try_init();
-        env::var("BITCOIND_EXE").expect("BITCOIND_EXE env var must be set")
+        if let Some(downloaded_exe_path) = downloaded_exe_path() {
+            downloaded_exe_path
+        } else {
+            env::var("BITCOIND_EXE").expect(
+                "when no version feature is specified, you must specify BITCOIND_EXE env var",
+            )
+        }
     }
 }
