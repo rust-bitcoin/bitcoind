@@ -20,7 +20,9 @@ jobs:
       - name: cache
         uses: actions/cache@v2
         with:
-          path: target
+          path: |
+            ~/.cargo/
+            target
           key: ${{ matrix.os }}-${{ matrix.feature }}-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
       - uses: actions-rs/toolchain@v1
         with:
@@ -30,7 +32,7 @@ jobs:
         with:
           command: test
           args: --verbose --features ${{ matrix.feature }}
-      - run: echo "BITCOIND_EXE=${{ github.workspace }}/target/bitcoin-${{ matrix.feature }}/bin/bitcoind" >> $GITHUB_ENV
+      - run: echo "BITCOIND_EXE=../../../.cargo/bitcoin/bitcoin-${{ matrix.feature }}/bin/bitcoind" >> $GITHUB_ENV
       - uses: actions-rs/cargo@v1
         with:
           command: test

@@ -36,8 +36,9 @@ fn main() {
     }
     let download_filename = download_filename();
     let expected_hash = get_expected_sha256(&download_filename).unwrap();
-
-    let existing_filename: PathBuf = format!("./target/bitcoin-{}/bin/bitcoind", VERSION).into();
+    let bitcoin_exe_home = format!("{}/bitcoin", std::env::var("CARGO_HOME").unwrap());
+    let existing_filename: PathBuf =
+        format!("{}/bitcoin-{}/bin/bitcoind", &bitcoin_exe_home, VERSION).into();
 
     if !existing_filename.exists() {
         println!(
@@ -66,7 +67,7 @@ fn main() {
         for mut entry in archive.entries().unwrap().flatten() {
             if let Ok(file) = entry.path() {
                 if file.ends_with("bitcoind") {
-                    entry.unpack_in("./target").unwrap();
+                    entry.unpack_in(&bitcoin_exe_home).unwrap();
                 }
             }
         }

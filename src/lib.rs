@@ -13,8 +13,6 @@
 
 mod versions;
 
-pub use versions::downloaded_exe_path;
-
 use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use log::debug;
@@ -251,9 +249,22 @@ impl From<bitcoincore_rpc::Error> for Error {
     }
 }
 
+/// Provide the bitcoind executable path if a version feature has been specified
+pub fn downloaded_exe_path() -> Option<String> {
+    if versions::HAS_FEATURE {
+        Some(format!(
+            "{}/.cargo/bitcoin/bitcoin-{}/bin/bitcoind",
+            dirs_next::home_dir()?.display(),
+            versions::VERSION
+        ))
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::versions::downloaded_exe_path;
+    use crate::downloaded_exe_path;
     use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
     use std::env;
@@ -279,6 +290,7 @@ mod test {
     #[test]
     fn test_bitcoind() {
         let exe = init();
+        println!("{}", exe);
         let bitcoind = BitcoinD::new(exe).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(0, info.blocks);
