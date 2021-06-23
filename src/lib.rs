@@ -251,6 +251,7 @@ impl From<bitcoincore_rpc::Error> for Error {
 
 /// Provide the bitcoind executable path if a version feature has been specified
 pub fn downloaded_exe_path() -> Option<String> {
+    // CARGO_HOME surely available only in `build.rs` here we need to get from home_dir
     if versions::HAS_FEATURE {
         Some(format!(
             "{}/.cargo/bitcoin/bitcoin-{}/bin/bitcoind",
@@ -301,7 +302,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(any(feature = "0.21.0", feature = "0.21.1"))]
+    #[cfg(any(feature = "0_21_0", feature = "0_21_1"))]
     fn test_getindexinfo() {
         let exe = init();
         let mut conf = Conf::default();
