@@ -2,7 +2,7 @@
 
 Utility to run a regtest bitcoind process, useful in integration testing environment.
 
-```
+```rust
 use bitcoincore_rpc::RpcApi;
 let bitcoind = bitcoind::BitcoinD::new("/usr/local/bin/bitcoind").unwrap();
 assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
@@ -15,3 +15,26 @@ assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
   * Free ports are asked to the OS (a low probability race condition is still possible) 
   * the process is killed when the struct goes out of scope no matter how the test finishes
   * allows easy spawning of dependent process like https://github.com/RCasatta/electrsd
+
+## Cargo features
+
+When a feature like `0_21_1` is selected, the build script will automatically download the bitcoin core version 0.21.1
+verifying the hashes and placing it in `${CARGO_HOME}`.
+Use utility function `downloaded_exe_path()` to have the downloaded executable path.
+
+### Example
+
+##### Cargo.toml
+
+```toml
+
+[dev-dependencies]
+bitcoind = { version = "0.12.0", features = "0_21_1" }
+```
+
+#### In your tests
+
+```rust
+let bitcoind = bitcoind::BitcoinD::new(bitcoind::downloaded_exe_path().unwrap()).unwrap();
+```
+
