@@ -1,3 +1,6 @@
+[![MIT license](https://img.shields.io/github/license/RCasatta/bitcoind)](https://github.com/RCasatta/bitcoind/blob/master/LICENSE)
+[![Crates](https://img.shields.io/crates/v/bitcoind.svg)](https://crates.io/crates/bitcoind)
+
 # Bitcoind
 
 Utility to run a regtest bitcoind process, useful in integration testing environment.
