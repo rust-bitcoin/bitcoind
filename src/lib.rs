@@ -145,7 +145,8 @@ impl BitcoinD {
                 let p2p_socket = SocketAddrV4::new(LOCAL_IP, p2p_port);
                 let p2p_arg = format!("-port={}", p2p_port);
                 let connect = format!("-connect={}", other_node_url);
-                let args = vec![p2p_arg, connect];
+                let listen = "-listen=1".to_string(); // With connect specified listen is not defaulted to 1
+                let args = vec![p2p_arg, connect, listen];
                 (args, Some(p2p_socket))
             }
         };
@@ -336,8 +337,40 @@ mod test {
         assert_eq!(other_bitcoind.client.get_peer_info().unwrap().len(), 1);
     }
 
-    fn init() -> String {
-        let _ = env_logger::try_init();
+    #[test]
+    fn test_multi_p2p() {
+        let conf_node1 = Conf {
+            p2p: P2P::Yes,
+            ..Default::default()
+        };
+        let node1 = BitcoinD::with_conf(exe_path(), &conf_node1).unwrap();
+
+        // Create Node 2 connected Node 1
+        let conf_node2 = Conf {
+            p2p: node1.p2p_connect().unwrap(),
+            ..Default::default()
+        };
+        let node2 = BitcoinD::with_conf(exe_path(), &conf_node2).unwrap();
+
+        // Create Node 3 Connected To Node 2
+        let conf_node3 = Conf {
+            p2p: node2.p2p_connect().unwrap(),
+            ..Default::default()
+        };
+        let node3 = BitcoinD::with_conf(exe_path(), &conf_node3).unwrap();
+
+        // Get each nodes Peers
+        let node1_peers = node1.client.get_peer_info().unwrap();
+        let node2_peers = node2.client.get_peer_info().unwrap();
+        let node3_peers = node3.client.get_peer_info().unwrap();
+
+        // Peers found
+        assert!(node1_peers.len() >= 1);
+        assert!(node2_peers.len() >= 1);
+        assert!(node3_peers.len() >= 1);
+    }
+
+    fn exe_path() -> String {
         if let Some(downloaded_exe_path) = downloaded_exe_path() {
             downloaded_exe_path
         } else {
@@ -345,5 +378,10 @@ mod test {
                 "when no version feature is specified, you must specify BITCOIND_EXE env var",
             )
         }
+    }
+
+    fn init() -> String {
+        let _ = env_logger::try_init();
+        exe_path()
     }
 }
