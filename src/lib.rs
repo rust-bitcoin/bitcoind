@@ -61,8 +61,9 @@ pub enum P2P {
     /// the node open a p2p port
     Yes,
     /// The node open a p2p port and also connects to the url given as parameter, it's handy to
-    /// initialize this with [BitcoinD::p2p_connect] of another node.
-    Connect(SocketAddrV4),
+    /// initialize this with [BitcoinD::p2p_connect] of another node. The `bool` parameter indicates
+    /// if the node can accept connection too.
+    Connect(SocketAddrV4, bool),
 }
 
 /// All the possible error in this crate
@@ -140,13 +141,15 @@ impl BitcoinD {
                 let args = vec![p2p_arg];
                 (args, Some(p2p_socket))
             }
-            P2P::Connect(other_node_url) => {
+            P2P::Connect(other_node_url, listen) => {
                 let p2p_port = get_available_port()?;
                 let p2p_socket = SocketAddrV4::new(LOCAL_IP, p2p_port);
                 let p2p_arg = format!("-port={}", p2p_port);
                 let connect = format!("-connect={}", other_node_url);
-                let listen = "-listen=1".to_string(); // With connect specified listen is not defaulted to 1
-                let args = vec![p2p_arg, connect, listen];
+                let mut args = vec![p2p_arg, connect];
+                if listen {
+                    args.push("-listen=1".to_string())
+                }
                 (args, Some(p2p_socket))
             }
         };
@@ -212,8 +215,8 @@ impl BitcoinD {
     }
 
     /// Returns the [P2P] enum to connect to this node p2p port
-    pub fn p2p_connect(&self) -> Option<P2P> {
-        self.params.p2p_socket.map(P2P::Connect)
+    pub fn p2p_connect(&self, listen: bool) -> Option<P2P> {
+        self.params.p2p_socket.map(|s| P2P::Connect(s, listen))
     }
 
     /// Stop the node, waiting correct process termination
@@ -329,7 +332,7 @@ mod test {
         let bitcoind = BitcoinD::with_conf(&exe, &conf).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 0);
         let other_conf = Conf {
-            p2p: bitcoind.p2p_connect().unwrap(),
+            p2p: bitcoind.p2p_connect(false).unwrap(),
             ..Default::default()
         };
         let other_bitcoind = BitcoinD::with_conf(&exe, &other_conf).unwrap();
@@ -347,14 +350,14 @@ mod test {
 
         // Create Node 2 connected Node 1
         let conf_node2 = Conf {
-            p2p: node1.p2p_connect().unwrap(),
+            p2p: node1.p2p_connect(true).unwrap(),
             ..Default::default()
         };
         let node2 = BitcoinD::with_conf(exe_path(), &conf_node2).unwrap();
 
         // Create Node 3 Connected To Node 2
         let conf_node3 = Conf {
-            p2p: node2.p2p_connect().unwrap(),
+            p2p: node2.p2p_connect(false).unwrap(),
             ..Default::default()
         };
         let node3 = BitcoinD::with_conf(exe_path(), &conf_node3).unwrap();
@@ -367,7 +370,7 @@ mod test {
         // Peers found
         assert!(node1_peers.len() >= 1);
         assert!(node2_peers.len() >= 1);
-        assert!(node3_peers.len() >= 1);
+        assert_eq!(node3_peers.len(), 1, "listen false but more than 1 peer");
     }
 
     fn exe_path() -> String {
