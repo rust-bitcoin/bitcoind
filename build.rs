@@ -36,7 +36,12 @@ fn main() {
     }
     let download_filename = download_filename();
     let expected_hash = get_expected_sha256(&download_filename).unwrap();
-    let bitcoin_exe_home = format!("{}/bitcoin", std::env::var("CARGO_HOME").unwrap());
+    let bitcoin_exe_home = format!(
+        "{}/bitcoin",
+        home::cargo_home()
+            .expect("cannot determine CARGO_HOME")
+            .display()
+    );
     let existing_filename: PathBuf =
         format!("{}/bitcoin-{}/bin/bitcoind", &bitcoin_exe_home, VERSION).into();
 

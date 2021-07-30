@@ -258,8 +258,8 @@ pub fn downloaded_exe_path() -> Option<String> {
     // CARGO_HOME surely available only in `build.rs` here we need to get from home_dir
     if versions::HAS_FEATURE {
         Some(format!(
-            "{}/.cargo/bitcoin/bitcoin-{}/bin/bitcoind",
-            dirs_next::home_dir()?.display(),
+            "{}/bitcoin/bitcoin-{}/bin/bitcoind",
+            home::cargo_home().ok()?.display(),
             versions::VERSION
         ))
     } else {
