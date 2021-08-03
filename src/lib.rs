@@ -214,6 +214,17 @@ impl BitcoinD {
         format!("http://{}", self.params.rpc_socket)
     }
 
+    #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
+    /// Returns the rpc URL including the schema and the given `wallet_name`
+    /// eg. http://127.0.0.1:44842/wallet/my_wallet
+    pub fn rpc_url_with_wallet<T: AsRef<str>>(&self, wallet_name: T) -> String {
+        format!(
+            "http://{}/wallet/{}",
+            self.params.rpc_socket,
+            wallet_name.as_ref()
+        )
+    }
+
     /// Returns the [P2P] enum to connect to this node p2p port
     pub fn p2p_connect(&self, listen: bool) -> Option<P2P> {
         self.params.p2p_socket.map(|s| P2P::Connect(s, listen))
@@ -223,6 +234,19 @@ impl BitcoinD {
     pub fn stop(&mut self) -> Result<ExitStatus, Error> {
         self.client.stop()?;
         Ok(self.process.wait()?)
+    }
+
+    #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
+    /// Create a new wallet in the running node, and return an RPC client connected to the just
+    /// created wallet
+    pub fn create_wallet<T: AsRef<str>>(&self, wallet: T) -> Result<Client, Error> {
+        let _ = self
+            .client
+            .create_wallet(wallet.as_ref(), None, None, None, None)?;
+        Ok(Client::new(
+            self.rpc_url_with_wallet(wallet),
+            Auth::CookieFile(self.params.cookie_file.clone()),
+        )?)
     }
 }
 
@@ -371,6 +395,62 @@ mod test {
         assert!(node1_peers.len() >= 1);
         assert!(node2_peers.len() >= 1);
         assert_eq!(node3_peers.len(), 1, "listen false but more than 1 peer");
+    }
+
+    #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
+    #[test]
+    fn test_multi_wallet() {
+        use bitcoincore_rpc::bitcoin::Amount;
+        let exe = init();
+        let bitcoind = BitcoinD::new(exe).unwrap();
+        let alice = bitcoind.create_wallet("alice").unwrap();
+        let alice_address = alice.get_new_address(None, None).unwrap();
+        let bob = bitcoind.create_wallet("bob").unwrap();
+        let bob_address = bob.get_new_address(None, None).unwrap();
+        bitcoind
+            .client
+            .generate_to_address(1, &alice_address)
+            .unwrap();
+        bitcoind
+            .client
+            .generate_to_address(101, &bob_address)
+            .unwrap();
+        assert_eq!(
+            Amount::from_btc(50.0).unwrap(),
+            alice.get_balances().unwrap().mine.trusted
+        );
+        assert_eq!(
+            Amount::from_btc(50.0).unwrap(),
+            bob.get_balances().unwrap().mine.trusted
+        );
+        assert_eq!(
+            Amount::from_btc(5000.0).unwrap(),
+            bob.get_balances().unwrap().mine.immature
+        );
+        alice
+            .send_to_address(
+                &bob_address,
+                Amount::from_btc(1.0).unwrap(),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert!(
+            alice.get_balances().unwrap().mine.trusted < Amount::from_btc(49.0).unwrap()
+                && alice.get_balances().unwrap().mine.trusted > Amount::from_btc(48.9).unwrap()
+        );
+        assert_eq!(
+            Amount::from_btc(1.0).unwrap(),
+            bob.get_balances().unwrap().mine.untrusted_pending
+        );
+        assert!(
+            bitcoind.create_wallet("bob").is_err(),
+            "wallet already exist"
+        );
     }
 
     fn exe_path() -> String {

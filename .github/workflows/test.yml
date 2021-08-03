@@ -36,6 +36,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
+        if: ${{ matrix.feature != '0_18_1' &&  matrix.feature != '0_18_0' && matrix.feature != '0_17_1' }}
 
   cosmetics:
     runs-on: ubuntu-20.04
