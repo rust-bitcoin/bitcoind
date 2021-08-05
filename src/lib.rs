@@ -6,7 +6,7 @@
 //! Utility to run a regtest bitcoind process, useful in integration testing environment
 //!
 //! ```no_run
-//! use bitcoincore_rpc::RpcApi;
+//! use core_rpc::RpcApi;
 //! let bitcoind = bitcoind::BitcoinD::new("/usr/local/bin/bitcoind").unwrap();
 //! assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 //! ```
@@ -24,7 +24,7 @@ use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
 
-pub extern crate bitcoincore_rpc;
+pub extern crate core_rpc as bitcoincore_rpc;
 pub extern crate tempfile;
 
 /// Struct representing the bitcoind process with related information
@@ -181,7 +181,7 @@ impl BitcoinD {
         let client = loop {
             thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
-            let client_result = Client::new(rpc_url.clone(), Auth::CookieFile(cookie_file.clone()));
+            let client_result = Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()));
             if let Ok(client_base) = client_result {
                 // RpcApi has get_blockchain_info method, however being generic with `Value` allows
                 // to be compatible with different version, in the end we are only interested if
@@ -190,7 +190,7 @@ impl BitcoinD {
                     client_base
                         .create_wallet("default", None, None, None, None)
                         .unwrap();
-                    break Client::new(node_url_default, Auth::CookieFile(cookie_file.clone()))
+                    break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))
                         .unwrap();
                 }
             }
@@ -244,7 +244,7 @@ impl BitcoinD {
             .client
             .create_wallet(wallet.as_ref(), None, None, None, None)?;
         Ok(Client::new(
-            self.rpc_url_with_wallet(wallet),
+            &self.rpc_url_with_wallet(wallet),
             Auth::CookieFile(self.params.cookie_file.clone()),
         )?)
     }
