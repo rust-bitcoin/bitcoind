@@ -22,7 +22,6 @@ ureq = "2.1"
 bitcoin_hashes = "0.10"
 flate2 = "1.0"
 tar = "0.4"
-home = "0.5.3"
 
 [features]
 "0_21_1" = []

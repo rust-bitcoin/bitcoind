@@ -279,11 +279,10 @@ impl From<bitcoincore_rpc::Error> for Error {
 
 /// Provide the bitcoind executable path if a version feature has been specified
 pub fn downloaded_exe_path() -> Option<String> {
-    // CARGO_HOME surely available only in `build.rs` here we need to get from home_dir
     if versions::HAS_FEATURE {
         Some(format!(
             "{}/bitcoin/bitcoin-{}/bin/bitcoind",
-            home::cargo_home().ok()?.display(),
+            env!("OUT_DIR"),
             versions::VERSION
         ))
     } else {

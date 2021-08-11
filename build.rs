@@ -2,7 +2,7 @@ use bitcoin_hashes::{sha256, Hash};
 use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
-use std::path::PathBuf;
+use std::path::Path;
 use std::str::FromStr;
 use tar::Archive;
 
@@ -36,14 +36,15 @@ fn main() {
     }
     let download_filename = download_filename();
     let expected_hash = get_expected_sha256(&download_filename).unwrap();
-    let bitcoin_exe_home = format!(
-        "{}/bitcoin",
-        home::cargo_home()
-            .expect("cannot determine CARGO_HOME")
-            .display()
-    );
-    let existing_filename: PathBuf =
-        format!("{}/bitcoin-{}/bin/bitcoind", &bitcoin_exe_home, VERSION).into();
+    let out_dir = std::env::var_os("OUT_DIR").unwrap();
+    let bitcoin_exe_home = Path::new(&out_dir).join("bitcoin");
+    if !bitcoin_exe_home.exists() {
+        std::fs::create_dir(&bitcoin_exe_home).unwrap();
+    }
+    let existing_filename = bitcoin_exe_home
+        .join(format!("bitcoin-{}", VERSION))
+        .join("bin")
+        .join("bicoind");
 
     if !existing_filename.exists() {
         println!(
