@@ -32,11 +32,6 @@ jobs:
         with:
           command: test
           args: --features ${{ matrix.feature }}
-      - run: VERSION_WITH_UNDERSCORE=${{ matrix.feature }} && echo "BITCOIND_EXE=../../../.cargo/bitcoin/bitcoin-${VERSION_WITH_UNDERSCORE//_/.}/bin/bitcoind" >> $GITHUB_ENV
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-        if: ${{ matrix.feature != '0_18_1' &&  matrix.feature != '0_18_0' && matrix.feature != '0_17_1' }}
 
   cosmetics:
     runs-on: ubuntu-20.04
