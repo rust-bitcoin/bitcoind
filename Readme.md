@@ -22,8 +22,8 @@ assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 ## Cargo features
 
 When a feature like `0_21_1` is selected, the build script will automatically download the bitcoin core version 0.21.1
-verifying the hashes and placing it in `${CARGO_HOME}`.
-Use utility function `downloaded_exe_path()` to have the downloaded executable path.
+and verify the hashes and place it in the build directory for this crate.
+Use utility function `downloaded_exe_path()` to get the downloaded executable path.
 
 ### Example
 
