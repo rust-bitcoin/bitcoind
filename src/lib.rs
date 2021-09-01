@@ -55,6 +55,7 @@ pub struct ConnectParams {
 }
 
 /// Enum to specify p2p settings
+#[derive(Debug, PartialEq, Eq)]
 pub enum P2P {
     /// the node doesn't open a p2p port and work in standalone mode
     No,
@@ -79,19 +80,24 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
 /// The node configuration parameters, implements a convenient [Default] for most common use.
 ///
+/// `#[non_exhaustive]` allows adding new parameters without breaking downstream users
+///
 /// Default values:
-/// ```no_run
-/// bitcoind::Conf {
-///     args: vec!["-regtest", "-fallbackfee=0.0001"],
-///     view_stdout: false,
-///     p2p: bitcoind::P2P::No,
-///     network: "regtest",
-/// };
 /// ```
+/// let mut conf = bitcoind::Conf::default();
+/// conf.args = vec!["-regtest", "-fallbackfee=0.0001"];
+/// conf.view_stdout = false;
+/// conf.p2p = bitcoind::P2P::No;
+/// conf.network = "regtest";
+/// assert_eq!(conf, bitcoind::Conf::default());
+/// ```
+///
+#[non_exhaustive]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Conf<'a> {
     /// Bitcoind command line arguments containing no spaces like `vec!["-dbcache=300", "-regtest"]`
-    /// note that `port`, `rpcport`, `connect`, `datadir`, `listen` cannot be used cause they are
-    /// automatically initialized.
+    /// note that `port`, `rpcport`, `connect`, `datadir`, `listen`
+    /// cannot be used because they are automatically initialized.
     pub args: Vec<&'a str>,
 
     /// if `true` bitcoind log output will not be suppressed
