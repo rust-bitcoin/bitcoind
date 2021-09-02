@@ -51,3 +51,23 @@ jobs:
         run: cargo fmt -- --check
       - name: clippy
         run: cargo clippy -- -D warnings
+
+  rust-version:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ "1.41.1", "1.45.0", "1.46.0", "stable", "nightly" ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: Swatinem/rust-cache@v1.2.0
+        with:
+          key: ${{ matrix.version }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
