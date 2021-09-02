@@ -11,6 +11,10 @@ let bitcoind = bitcoind::BitcoinD::new("/usr/local/bin/bitcoind").unwrap();
 assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 ```
 
+## MSRV
+
+1.41.1
+
 ## Features
 
   * It waits until bitcoind daemon become ready to accept RPC commands

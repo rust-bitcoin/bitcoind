@@ -18,7 +18,7 @@ home = "0.5.3"  # use same ver in build-dep
 env_logger = "0.8"
 
 [build-dependencies]
-ureq = "2.1"
+ureq = "<2"  # allows to keep MSRV 1.41.1
 bitcoin_hashes = "0.10"
 flate2 = "1.0"
 tar = "0.4"
