@@ -193,8 +193,21 @@ impl BitcoinD {
                 // to be compatible with different version, in the end we are only interested if
                 // the call is succesfull not in the returned value.
                 if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
+                    let desc_wallet = if cfg!(not(any(
+                        feature = "0_20_1",
+                        feature = "0_20_0",
+                        feature = "0_19_1",
+                        feature = "0_19_0_1",
+                        feature = "0_18_1",
+                        feature = "0_18_0",
+                        feature = "0_17_1"
+                    ))) {
+                        Some(true)
+                    } else {
+                        None
+                    };
                     client_base
-                        .create_wallet("default", None, None, None, None, None)
+                        .create_wallet("default", None, None, None, None, desc_wallet)
                         .unwrap();
                     break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))
                         .unwrap();
