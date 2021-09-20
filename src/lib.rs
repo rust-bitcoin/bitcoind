@@ -194,7 +194,7 @@ impl BitcoinD {
                 // the call is succesfull not in the returned value.
                 if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
                     client_base
-                        .create_wallet("default", None, None, None, None)
+                        .create_wallet("default", None, None, None, None, None)
                         .unwrap();
                     break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))
                         .unwrap();
@@ -248,7 +248,7 @@ impl BitcoinD {
     pub fn create_wallet<T: AsRef<str>>(&self, wallet: T) -> Result<Client, Error> {
         let _ = self
             .client
-            .create_wallet(wallet.as_ref(), None, None, None, None)?;
+            .create_wallet(wallet.as_ref(), None, None, None, None, None)?;
         Ok(Client::new(
             &self.rpc_url_with_wallet(wallet),
             Auth::CookieFile(self.params.cookie_file.clone()),
