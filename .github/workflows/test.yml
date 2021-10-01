@@ -19,6 +19,8 @@ jobs:
             feature: "0_21_1"
 
     steps:
+      - name: Install test dependencies
+        run: sudo apt-get update -y && sudo apt-get install -y libssl-dev
       - uses: actions/checkout@v2
       - uses: Swatinem/rust-cache@v1.2.0
         with:
