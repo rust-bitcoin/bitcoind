@@ -1,7 +1,8 @@
 use bitcoin_hashes::{sha256, Hash};
+use curl::easy::Easy;
 use flate2::read::GzDecoder;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::str::FromStr;
 use tar::Archive;
@@ -68,23 +69,31 @@ fn main() {
             "https://bitcoincore.org/bin/bitcoin-core-{}/{}",
             VERSION, download_filename
         );
-        let mut downloaded_bytes = Vec::new();
+        let mut downloaded_bytes = Vec::with_capacity(10_000_000); // 10Mb are always used
 
-        let _size = ureq::get(&url)
-            .call()
-            .into_reader()
-            .read_to_end(&mut downloaded_bytes)
-            .unwrap();
+        let mut easy = Easy::new();
+        easy.url(&url).unwrap();
+        {
+            let mut transfer = easy.transfer();
+            transfer
+                .write_function(|data| {
+                    downloaded_bytes.extend_from_slice(data);
+                    Ok(data.len())
+                })
+                .unwrap();
+            transfer.perform().unwrap();
+        }
 
         let downloaded_hash = sha256::Hash::hash(&downloaded_bytes);
         assert_eq!(expected_hash, downloaded_hash);
-        let d = GzDecoder::new(&downloaded_bytes[..]);
+        let cursor = std::io::Cursor::new(downloaded_bytes);
+        let d = GzDecoder::new(cursor).unwrap();
 
         let mut archive = Archive::new(d);
-        for mut entry in archive.entries().unwrap().flatten() {
-            if let Ok(file) = entry.path() {
+        for mut entry in archive.entries_mut().unwrap().flatten() {
+            if let Ok(file) = entry.header().path() {
                 if file.ends_with("bitcoind") {
-                    entry.unpack_in(&bitcoin_exe_home).unwrap();
+                    entry.unpack(&bitcoin_exe_home).unwrap();
                 }
             }
         }

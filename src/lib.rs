@@ -80,7 +80,6 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
 /// The node configuration parameters, implements a convenient [Default] for most common use.
 ///
-/// `#[non_exhaustive]` allows adding new parameters without breaking downstream users
 ///
 /// Default values:
 /// ```
@@ -92,7 +91,6 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 /// assert_eq!(conf, bitcoind::Conf::default());
 /// ```
 ///
-#[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
 pub struct Conf<'a> {
     /// Bitcoind command line arguments containing no spaces like `vec!["-dbcache=300", "-regtest"]`
