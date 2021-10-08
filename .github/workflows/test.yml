@@ -19,6 +19,7 @@ jobs:
             feature: "0_21_1"
 
     steps:
+      - run: df -h
       - uses: actions/checkout@v2
       - uses: Swatinem/rust-cache@v1.2.0
         with:
