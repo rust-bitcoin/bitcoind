@@ -9,6 +9,8 @@ jobs:
 
   test:
     runs-on: ${{ matrix.os }}
+    env:
+      RUST_LOG: bitcoind=debug
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +31,8 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - run: echo "TEMPDIR_ROOT=/dev/shm" >> $GITHUB_ENV
+        if: ${{ matrix.os != 'macos-10.15' }}
       - uses: actions-rs/cargo@v1
         with:
           command: test
