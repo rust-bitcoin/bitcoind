@@ -20,8 +20,8 @@ use std::ffi::OsStr;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::thread;
 use std::time::Duration;
+use std::{env, thread};
 use tempfile::TempDir;
 
 pub extern crate core_rpc as bitcoincore_rpc;
@@ -80,7 +80,9 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
 /// The node configuration parameters, implements a convenient [Default] for most common use.
 ///
-/// `#[non_exhaustive]` allows adding new parameters without breaking downstream users
+/// `#[non_exhaustive]` allows adding new parameters without breaking downstream users.
+/// Users cannot instantiate the struct directly, they need to create it via the `default()` method
+/// and mutate fields according to their preference.
 ///
 /// Default values:
 /// ```
@@ -89,6 +91,7 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 /// conf.view_stdout = false;
 /// conf.p2p = bitcoind::P2P::No;
 /// conf.network = "regtest";
+/// conf.tmpdir = None;
 /// assert_eq!(conf, bitcoind::Conf::default());
 /// ```
 ///
@@ -109,6 +112,13 @@ pub struct Conf<'a> {
     /// Must match what specified in args without dashes, needed to locate the cookie file
     /// directory with different/esoteric networks
     pub network: &'a str,
+
+    /// Optionally specify the root of where the temporary directories will be created.
+    /// If none and the env var `TEMPDIR_ROOT` is set, the env var is used.
+    /// If none and the env var `TEMPDIR_ROOT` is not set, the default temp dir of the OS is used.
+    /// It may be useful for example to set to a ramdisk so that bitcoin nodes spawn very fast
+    /// because their datadirs are in RAM
+    pub tmpdir: Option<PathBuf>,
 }
 
 impl Default for Conf<'_> {
@@ -118,6 +128,7 @@ impl Default for Conf<'_> {
             view_stdout: false,
             p2p: P2P::No,
             network: "regtest",
+            tmpdir: None,
         }
     }
 }
@@ -132,8 +143,14 @@ impl BitcoinD {
 
     /// Launch the bitcoind process from the given `exe` executable with given [Conf] param
     pub fn with_conf<S: AsRef<OsStr>>(exe: S, conf: &Conf) -> Result<BitcoinD, Error> {
-        let _work_dir = TempDir::new()?;
-        let datadir = _work_dir.path().to_path_buf();
+        let work_dir = match &conf.tmpdir {
+            Some(path) => TempDir::new_in(path),
+            None => match env::var("TEMPDIR_ROOT") {
+                Ok(env_path) => TempDir::new_in(env_path),
+                Err(_) => TempDir::new(),
+            },
+        }?;
+        let datadir = work_dir.path().to_path_buf();
         let cookie_file = datadir.join(conf.network).join(".cookie");
         let rpc_port = get_available_port()?;
         let rpc_socket = SocketAddrV4::new(LOCAL_IP, rpc_port);
@@ -205,7 +222,7 @@ impl BitcoinD {
         Ok(BitcoinD {
             process,
             client,
-            _work_dir,
+            _work_dir: work_dir,
             params: ConnectParams {
                 datadir,
                 cookie_file,
