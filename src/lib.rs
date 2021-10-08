@@ -150,6 +150,7 @@ impl BitcoinD {
                 Err(_) => TempDir::new(),
             },
         }?;
+        debug!("work_dir: {:?}", work_dir);
         let datadir = work_dir.path().to_path_buf();
         let cookie_file = datadir.join(conf.network).join(".cookie");
         let rpc_port = get_available_port()?;
@@ -330,15 +331,6 @@ mod test {
     }
 
     #[test]
-    fn test_default() {
-        let conf = Conf {
-            p2p: P2P::Yes,
-            ..Default::default()
-        };
-        assert_eq!("regtest", conf.network);
-    }
-
-    #[test]
     fn test_bitcoind() {
         let exe = init();
         println!("{}", exe);
@@ -371,16 +363,14 @@ mod test {
     #[test]
     fn test_p2p() {
         let exe = init();
-        let conf = Conf {
-            p2p: P2P::Yes,
-            ..Default::default()
-        };
+        let mut conf = Conf::default();
+        conf.p2p = P2P::Yes;
+
         let bitcoind = BitcoinD::with_conf(&exe, &conf).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 0);
-        let other_conf = Conf {
-            p2p: bitcoind.p2p_connect(false).unwrap(),
-            ..Default::default()
-        };
+        let mut other_conf = Conf::default();
+        other_conf.p2p = bitcoind.p2p_connect(false).unwrap();
+
         let other_bitcoind = BitcoinD::with_conf(&exe, &other_conf).unwrap();
         assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 1);
         assert_eq!(other_bitcoind.client.get_peer_info().unwrap().len(), 1);
@@ -388,24 +378,18 @@ mod test {
 
     #[test]
     fn test_multi_p2p() {
-        let conf_node1 = Conf {
-            p2p: P2P::Yes,
-            ..Default::default()
-        };
+        let mut conf_node1 = Conf::default();
+        conf_node1.p2p = P2P::Yes;
         let node1 = BitcoinD::with_conf(exe_path(), &conf_node1).unwrap();
 
         // Create Node 2 connected Node 1
-        let conf_node2 = Conf {
-            p2p: node1.p2p_connect(true).unwrap(),
-            ..Default::default()
-        };
+        let mut conf_node2 = Conf::default();
+        conf_node2.p2p = node1.p2p_connect(true).unwrap();
         let node2 = BitcoinD::with_conf(exe_path(), &conf_node2).unwrap();
 
-        // Create Node 3 Connected To Node 2
-        let conf_node3 = Conf {
-            p2p: node2.p2p_connect(false).unwrap(),
-            ..Default::default()
-        };
+        // Create Node 3 Connected To Node
+        let mut conf_node3 = Conf::default();
+        conf_node3.p2p = node2.p2p_connect(false).unwrap();
         let node3 = BitcoinD::with_conf(exe_path(), &conf_node3).unwrap();
 
         // Get each nodes Peers
