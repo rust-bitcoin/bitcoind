@@ -316,6 +316,8 @@ pub fn downloaded_exe_path() -> Option<String> {
 
 #[cfg(test)]
 mod test {
+    use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
+    use crate::bitcoincore_rpc::Client;
     use crate::downloaded_exe_path;
     use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
@@ -367,13 +369,13 @@ mod test {
         conf.p2p = P2P::Yes;
 
         let bitcoind = BitcoinD::with_conf(&exe, &conf).unwrap();
-        assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 0);
+        assert_eq!(peers_connected(&bitcoind.client), 0);
         let mut other_conf = Conf::default();
         other_conf.p2p = bitcoind.p2p_connect(false).unwrap();
 
         let other_bitcoind = BitcoinD::with_conf(&exe, &other_conf).unwrap();
-        assert_eq!(bitcoind.client.get_peer_info().unwrap().len(), 1);
-        assert_eq!(other_bitcoind.client.get_peer_info().unwrap().len(), 1);
+        assert_eq!(peers_connected(&bitcoind.client), 1);
+        assert_eq!(peers_connected(&other_bitcoind.client), 1);
     }
 
     #[test]
@@ -393,14 +395,14 @@ mod test {
         let node3 = BitcoinD::with_conf(exe_path(), &conf_node3).unwrap();
 
         // Get each nodes Peers
-        let node1_peers = node1.client.get_peer_info().unwrap();
-        let node2_peers = node2.client.get_peer_info().unwrap();
-        let node3_peers = node3.client.get_peer_info().unwrap();
+        let node1_peers = peers_connected(&node1.client);
+        let node2_peers = peers_connected(&node2.client);
+        let node3_peers = peers_connected(&node3.client);
 
         // Peers found
-        assert!(node1_peers.len() >= 1);
-        assert!(node2_peers.len() >= 1);
-        assert_eq!(node3_peers.len(), 1, "listen false but more than 1 peer");
+        assert!(node1_peers >= 1);
+        assert!(node2_peers >= 1);
+        assert_eq!(node3_peers, 1, "listen false but more than 1 peer");
     }
 
     #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
@@ -457,6 +459,11 @@ mod test {
             bitcoind.create_wallet("bob").is_err(),
             "wallet already exist"
         );
+    }
+
+    fn peers_connected(client: &Client) -> usize {
+        let result: Vec<Value> = client.call("getpeerinfo", &[]).unwrap();
+        result.len()
     }
 
     fn exe_path() -> String {
