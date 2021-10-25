@@ -6,7 +6,7 @@
 //! Utility to run a regtest bitcoind process, useful in integration testing environment
 //!
 //! ```no_run
-//! use core_rpc::RpcApi;
+//! use bitcoincore_rpc::RpcApi;
 //! let bitcoind = bitcoind::BitcoinD::new("/usr/local/bin/bitcoind").unwrap();
 //! assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 //! ```
@@ -24,7 +24,7 @@ use std::time::Duration;
 use std::{env, thread};
 use tempfile::TempDir;
 
-pub extern crate core_rpc as bitcoincore_rpc;
+pub extern crate bitcoincore_rpc;
 pub extern crate tempfile;
 
 /// Struct representing the bitcoind process with related information
@@ -212,7 +212,7 @@ impl BitcoinD {
                 // the call is succesfull not in the returned value.
                 if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
                     client_base
-                        .create_wallet("default", None, None, None, None, None)
+                        .create_wallet("default", None, None, None, None)
                         .unwrap();
                     break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))
                         .unwrap();
@@ -266,7 +266,7 @@ impl BitcoinD {
     pub fn create_wallet<T: AsRef<str>>(&self, wallet: T) -> Result<Client, Error> {
         let _ = self
             .client
-            .create_wallet(wallet.as_ref(), None, None, None, None, None)?;
+            .create_wallet(wallet.as_ref(), None, None, None, None)?;
         Ok(Client::new(
             &self.rpc_url_with_wallet(wallet),
             Auth::CookieFile(self.params.cookie_file.clone()),
