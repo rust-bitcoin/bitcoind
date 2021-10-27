@@ -48,7 +48,7 @@ I used integration testing based on external bash script launching needed extern
 ## Features
 
   * It waits until bitcoind daemon become ready to accept RPC commands
-  * bitcoind use a temporary directory as datadir
+  * bitcoind use a temporary directory as datadir. You can specify the root of your temp directories so that you have node's datadir in a RAM disk (eg `/dev/shm`)
   * Free ports are asked to the OS (a low probability race condition is still possible) 
   * the process is killed when the struct goes out of scope no matter how the test finishes
   * allows easy spawning of dependent process like https://github.com/RCasatta/electrsd
