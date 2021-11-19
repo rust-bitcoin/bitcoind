@@ -8,7 +8,10 @@ use tar::Archive;
 
 include!("src/versions.rs");
 
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+#[cfg(all(
+    target_os = "macos",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
 fn download_filename() -> String {
     format!("bitcoin-{}-osx64.tar.gz", &VERSION)
 }
