@@ -21,7 +21,7 @@ use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::Duration;
-use std::{env, thread};
+use std::{env, fmt, thread};
 use tempfile::TempDir;
 
 pub extern crate bitcoincore_rpc;
@@ -68,12 +68,32 @@ pub enum P2P {
 }
 
 /// All the possible error in this crate
-#[derive(Debug)]
 pub enum Error {
     /// Wrapper of io Error
     Io(std::io::Error),
     /// Wrapper of bitcoincore_rpc Error
     Rpc(bitcoincore_rpc::Error),
+    /// Returned when calling methods requiring a feature to be activated, but it's not
+    NoFeature,
+    /// Returned when calling methods requiring a env var to exist, but it's not
+    NoEnvVar,
+    /// Returned when calling methods requiring either a feature or env var, but both are absent
+    NeitherFeatureNorEnvVar,
+    /// Returned when calling methods requiring either a feature or anv var, but both are present
+    BothFeatureAndEnvVar,
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Io(e) => write!(f, "{:?}", e),
+            Error::Rpc(e) => write!(f, "{:?}", e),
+            Error::NoFeature => write!(f, "Called a method requiring a feature to be set, but it's not"),
+            Error::NoEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` to be set, but it's not"),
+            Error::NeitherFeatureNorEnvVar =>  write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but neither are set"),
+            Error::BothFeatureAndEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but both are set"),
+        }
+    }
 }
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
@@ -302,22 +322,27 @@ impl From<bitcoincore_rpc::Error> for Error {
 }
 
 /// Provide the bitcoind executable path if a version feature has been specified
-pub fn downloaded_exe_path() -> Option<String> {
+pub fn downloaded_exe_path() -> Result<String, Error> {
     if versions::HAS_FEATURE {
-        Some(format!(
+        Ok(format!(
             "{}/bitcoin/bitcoin-{}/bin/bitcoind",
             env!("OUT_DIR"),
             versions::VERSION
         ))
     } else {
-        None
+        Err(Error::NoFeature)
     }
 }
 
 /// Returns the daemon executable path if it's provided as a feature or as `BITCOIND_EXE` env var.
-/// If both are set, the path provided by the feature is returned.
-pub fn exe_path() -> Option<String> {
-    downloaded_exe_path().or_else(|| std::env::var("BITCOIND_EXE").ok())
+/// Returns error if none or both are set
+pub fn exe_path() -> Result<String, Error> {
+    match (downloaded_exe_path(), std::env::var("BITCOIND_EXE")) {
+        (Ok(_), Ok(_)) => Err(Error::BothFeatureAndEnvVar),
+        (Ok(path), Err(_)) => Ok(path),
+        (Err(_), Ok(path)) => Ok(path),
+        (Err(_), Err(_)) => Err(Error::NeitherFeatureNorEnvVar),
+    }
 }
 
 #[cfg(test)]
