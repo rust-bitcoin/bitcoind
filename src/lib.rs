@@ -314,14 +314,19 @@ pub fn downloaded_exe_path() -> Option<String> {
     }
 }
 
+/// Returns the daemon executable path if it's provided as a feature or as `BITCOIND_EXE` env var.
+/// If both are set, the path provided by the feature is returned.
+pub fn exe_path() -> Option<String> {
+    downloaded_exe_path().or_else(|| std::env::var("BITCOIND_EXE").ok())
+}
+
 #[cfg(test)]
 mod test {
     use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
     use crate::bitcoincore_rpc::Client;
-    use crate::downloaded_exe_path;
+    use crate::exe_path;
     use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
-    use std::env;
     use std::net::SocketAddrV4;
 
     #[test]
@@ -382,17 +387,17 @@ mod test {
     fn test_multi_p2p() {
         let mut conf_node1 = Conf::default();
         conf_node1.p2p = P2P::Yes;
-        let node1 = BitcoinD::with_conf(exe_path(), &conf_node1).unwrap();
+        let node1 = BitcoinD::with_conf(exe_path().unwrap(), &conf_node1).unwrap();
 
         // Create Node 2 connected Node 1
         let mut conf_node2 = Conf::default();
         conf_node2.p2p = node1.p2p_connect(true).unwrap();
-        let node2 = BitcoinD::with_conf(exe_path(), &conf_node2).unwrap();
+        let node2 = BitcoinD::with_conf(exe_path().unwrap(), &conf_node2).unwrap();
 
         // Create Node 3 Connected To Node
         let mut conf_node3 = Conf::default();
         conf_node3.p2p = node2.p2p_connect(false).unwrap();
-        let node3 = BitcoinD::with_conf(exe_path(), &conf_node3).unwrap();
+        let node3 = BitcoinD::with_conf(exe_path().unwrap(), &conf_node3).unwrap();
 
         // Get each nodes Peers
         let node1_peers = peers_connected(&node1.client);
@@ -466,18 +471,8 @@ mod test {
         result.len()
     }
 
-    fn exe_path() -> String {
-        if let Some(downloaded_exe_path) = downloaded_exe_path() {
-            downloaded_exe_path
-        } else {
-            env::var("BITCOIND_EXE").expect(
-                "when no version feature is specified, you must specify BITCOIND_EXE env var",
-            )
-        }
-    }
-
     fn init() -> String {
         let _ = env_logger::try_init();
-        exe_path()
+        exe_path().unwrap()
     }
 }
