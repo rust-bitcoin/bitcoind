@@ -96,6 +96,14 @@ impl fmt::Debug for Error {
     }
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for Error {}
+
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
 /// The node configuration parameters, implements a convenient [Default] for most common use.
