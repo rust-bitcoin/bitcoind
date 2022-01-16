@@ -23,7 +23,7 @@ In your project Cargo.toml, activate the following features
 ```toml
 
 [dev-dependencies]
-bitcoind = { version = "0.20.0", features = "22_0" }
+bitcoind = { version = "0.20.0", features = [ "22_0" ] }
 ```
 
 Then use it:
