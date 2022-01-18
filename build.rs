@@ -59,7 +59,7 @@ fn main() {
     let existing_filename = bitcoin_exe_home
         .join(format!("bitcoin-{}", VERSION))
         .join("bin")
-        .join("bicoind");
+        .join("bitcoind");
 
     if !existing_filename.exists() {
         println!(
