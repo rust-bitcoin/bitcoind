@@ -15,7 +15,7 @@ mod versions;
 
 use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
-use log::debug;
+use log::{debug, error};
 use std::ffi::OsStr;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
@@ -81,6 +81,8 @@ pub enum Error {
     NeitherFeatureNorEnvVar,
     /// Returned when calling methods requiring either a feature or anv var, but both are present
     BothFeatureAndEnvVar,
+    /// Wrapper of early exit status
+    EarlyExit(ExitStatus),
 }
 
 impl fmt::Debug for Error {
@@ -92,6 +94,7 @@ impl fmt::Debug for Error {
             Error::NoEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` to be set, but it's not"),
             Error::NeitherFeatureNorEnvVar =>  write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but neither are set"),
             Error::BothFeatureAndEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but both are set"),
+            Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
         }
     }
 }
@@ -221,7 +224,7 @@ impl BitcoinD {
             default_args,
             p2p_args
         );
-        let process = Command::new(exe)
+        let mut process = Command::new(exe)
             .args(&default_args)
             .args(&p2p_args)
             .args(&conf.args)
@@ -231,6 +234,10 @@ impl BitcoinD {
         let node_url_default = format!("{}/wallet/default", rpc_url);
         // wait bitcoind is ready, use default wallet
         let client = loop {
+            if let Some(status) = process.try_wait()? {
+                error!("early exit with: {:?}", status);
+                return Err(Error::EarlyExit(status));
+            }
             thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
             let client_result = Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()));
