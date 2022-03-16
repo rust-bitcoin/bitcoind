@@ -15,7 +15,7 @@ mod versions;
 
 use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
-use log::{debug, error};
+use log::{debug, error, warn};
 use std::ffi::OsStr;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
@@ -55,7 +55,7 @@ pub struct ConnectParams {
 }
 
 /// Enum to specify p2p settings
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum P2P {
     /// the node doesn't open a p2p port and work in standalone mode
     No,
@@ -123,11 +123,12 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 /// conf.p2p = bitcoind::P2P::No;
 /// conf.network = "regtest";
 /// conf.tmpdir = None;
+/// conf.attempts = 3;
 /// assert_eq!(conf, bitcoind::Conf::default());
 /// ```
 ///
 #[non_exhaustive]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Conf<'a> {
     /// Bitcoind command line arguments containing no spaces like `vec!["-dbcache=300", "-regtest"]`
     /// note that `port`, `rpcport`, `connect`, `datadir`, `listen`
@@ -150,6 +151,13 @@ pub struct Conf<'a> {
     /// It may be useful for example to set to a ramdisk so that bitcoin nodes spawn very fast
     /// because their datadirs are in RAM
     pub tmpdir: Option<PathBuf>,
+
+    /// Try to spawn the process `attempt` time
+    ///
+    /// The OS is giving available ports to use, however, they aren't booked, so it could rarely
+    /// happen they are used at the time the process is spawn. When retrying other available ports
+    /// are returned reducing the probability of conflicts to negligible.
+    pub attempts: u8,
 }
 
 impl Default for Conf<'_> {
@@ -160,6 +168,7 @@ impl Default for Conf<'_> {
             p2p: P2P::No,
             network: "regtest",
             tmpdir: None,
+            attempts: 3,
         }
     }
 }
@@ -224,7 +233,7 @@ impl BitcoinD {
             default_args,
             p2p_args
         );
-        let mut process = Command::new(exe)
+        let mut process = Command::new(exe.as_ref())
             .args(&default_args)
             .args(&p2p_args)
             .args(&conf.args)
@@ -235,8 +244,15 @@ impl BitcoinD {
         // wait bitcoind is ready, use default wallet
         let client = loop {
             if let Some(status) = process.try_wait()? {
-                error!("early exit with: {:?}", status);
-                return Err(Error::EarlyExit(status));
+                if conf.attempts > 0 {
+                    warn!("early exit with: {:?}. Trying to launch again ({} attempts remaining), maybe some other process used our available port", status, conf.attempts);
+                    let mut conf = conf.clone();
+                    conf.attempts -= 1;
+                    return Self::with_conf(exe, &conf);
+                } else {
+                    error!("early exit with: {:?}", status);
+                    return Err(Error::EarlyExit(status));
+                }
             }
             thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
@@ -380,7 +396,6 @@ mod test {
     #[test]
     fn test_bitcoind() {
         let exe = init();
-        println!("{}", exe);
         let bitcoind = BitcoinD::new(exe).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(0, info.blocks);
@@ -425,6 +440,7 @@ mod test {
 
     #[test]
     fn test_multi_p2p() {
+        let _ = env_logger::try_init();
         let mut conf_node1 = Conf::default();
         conf_node1.p2p = P2P::Yes;
         let node1 = BitcoinD::with_conf(exe_path().unwrap(), &conf_node1).unwrap();
