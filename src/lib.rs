@@ -21,7 +21,7 @@ use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::Duration;
-use std::{env, fmt, thread};
+use std::{env, fmt, fs, thread};
 use tempfile::TempDir;
 
 pub extern crate bitcoincore_rpc;
@@ -33,12 +33,30 @@ pub struct BitcoinD {
     process: Child,
     /// Rpc client linked to this bitcoind process
     pub client: Client,
-    /// Work directory, where the node store blocks and other stuff. It is kept in the struct so that
-    /// directory is deleted only when this struct is dropped
-    _work_dir: TempDir,
+    /// Work directory, where the node store blocks and other stuff.
+    work_dir: DataDir,
 
     /// Contains information to connect to this node
     pub params: ConnectParams,
+}
+
+/// The DataDir struct defining the kind of data directory the node
+/// will contain. Data directory can be either persistent, or temporary.
+pub enum DataDir {
+    /// Persistent Data Directory
+    Persistent(PathBuf),
+    /// Temporary Data Directory
+    Temporary(TempDir),
+}
+
+impl DataDir {
+    /// Return the data directory path
+    fn path(&self) -> PathBuf {
+        match self {
+            Self::Persistent(path) => path.to_owned(),
+            Self::Temporary(tmp_dir) => tmp_dir.path().to_path_buf(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +101,8 @@ pub enum Error {
     BothFeatureAndEnvVar,
     /// Wrapper of early exit status
     EarlyExit(ExitStatus),
+    /// Returned when both tmpdir and staticdir is specified in `Conf` options
+    BothDirsSpecified,
 }
 
 impl fmt::Debug for Error {
@@ -95,6 +115,7 @@ impl fmt::Debug for Error {
             Error::NeitherFeatureNorEnvVar =>  write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but neither are set"),
             Error::BothFeatureAndEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but both are set"),
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
+            Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options")
         }
     }
 }
@@ -123,6 +144,7 @@ const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 /// conf.p2p = bitcoind::P2P::No;
 /// conf.network = "regtest";
 /// conf.tmpdir = None;
+/// conf.staticdir = None;
 /// conf.attempts = 3;
 /// assert_eq!(conf, bitcoind::Conf::default());
 /// ```
@@ -145,12 +167,23 @@ pub struct Conf<'a> {
     /// directory with different/esoteric networks
     pub network: &'a str,
 
-    /// Optionally specify the root of where the temporary directories will be created.
-    /// If none and the env var `TEMPDIR_ROOT` is set, the env var is used.
-    /// If none and the env var `TEMPDIR_ROOT` is not set, the default temp dir of the OS is used.
-    /// It may be useful for example to set to a ramdisk so that bitcoin nodes spawn very fast
-    /// because their datadirs are in RAM
+    /// Optionally specify a temporary or persistent working directory for the node.
+    /// The following two parameters can be configured to simulate desired working directory configuration.
+    ///
+    /// tmpdir is Some() && staticdir is Some() : Error. Cannot be enabled at same time.
+    /// tmpdir is Some(temp_path) && staticdir is None : Create temporary directory at `tmpdir` path.
+    /// tmpdir is None && staticdir is Some(work_path) : Create persistent directory at `staticdir` path.
+    /// tmpdir is None && staticdir is None: Creates a temporary directory in OS default temporary directory (eg /tmp) or `TEMPDIR_ROOT` env variable path.
+    ///
+    /// It may be useful for example to set to a ramdisk via `TEMPDIR_ROOT` env option so that
+    /// bitcoin nodes spawn very fast because their datadirs are in RAM. Should not be enabled with persistent
+    /// mode, as it cause memory overflows.
+
+    /// Temporary directory path
     pub tmpdir: Option<PathBuf>,
+
+    /// Persistent directory path
+    pub staticdir: Option<PathBuf>,
 
     /// Try to spawn the process `attempt` time
     ///
@@ -168,6 +201,7 @@ impl Default for Conf<'_> {
             p2p: P2P::No,
             network: "regtest",
             tmpdir: None,
+            staticdir: None,
             attempts: 3,
         }
     }
@@ -183,16 +217,19 @@ impl BitcoinD {
 
     /// Launch the bitcoind process from the given `exe` executable with given [Conf] param
     pub fn with_conf<S: AsRef<OsStr>>(exe: S, conf: &Conf) -> Result<BitcoinD, Error> {
-        let work_dir = match &conf.tmpdir {
-            Some(path) => TempDir::new_in(path),
-            None => match env::var("TEMPDIR_ROOT") {
-                Ok(env_path) => TempDir::new_in(env_path),
-                Err(_) => TempDir::new(),
-            },
-        }?;
-        debug!("work_dir: {:?}", work_dir);
-        let datadir = work_dir.path().to_path_buf();
-        let cookie_file = datadir.join(conf.network).join(".cookie");
+        let work_dir = match (&conf.tmpdir, &conf.staticdir) {
+            (Some(_), Some(_)) => return Err(Error::BothDirsSpecified),
+            (Some(tmpdir), None) => DataDir::Temporary(TempDir::new_in(tmpdir)?),
+            (None, Some(workdir)) => {
+                fs::create_dir_all(workdir)?;
+                DataDir::Persistent(workdir.to_owned())
+            }
+            (None, None) => DataDir::Temporary(TempDir::new()?),
+        };
+
+        let work_dir_path = work_dir.path();
+        debug!("work_dir: {:?}", work_dir_path);
+        let cookie_file = work_dir_path.join(conf.network).join(".cookie");
         let rpc_port = get_available_port()?;
         let rpc_socket = SocketAddrV4::new(LOCAL_IP, rpc_port);
         let rpc_url = format!("http://{}", rpc_socket);
@@ -223,7 +260,7 @@ impl BitcoinD {
             Stdio::null()
         };
 
-        let datadir_arg = format!("-datadir={}", datadir.display());
+        let datadir_arg = format!("-datadir={}", work_dir_path.display());
         let rpc_arg = format!("-rpcport={}", rpc_port);
         let default_args = [&datadir_arg, &rpc_arg];
 
@@ -274,9 +311,9 @@ impl BitcoinD {
         Ok(BitcoinD {
             process,
             client,
-            _work_dir: work_dir,
+            work_dir,
             params: ConnectParams {
-                datadir,
+                datadir: work_dir_path,
                 cookie_file,
                 rpc_socket,
                 p2p_socket,
@@ -298,6 +335,11 @@ impl BitcoinD {
             self.params.rpc_socket,
             wallet_name.as_ref()
         )
+    }
+
+    /// Return the current workdir path of the running node
+    pub fn workdir(&self) -> PathBuf {
+        self.work_dir.path()
     }
 
     /// Returns the [P2P] enum to connect to this node p2p port
@@ -327,6 +369,9 @@ impl BitcoinD {
 
 impl Drop for BitcoinD {
     fn drop(&mut self) {
+        if let DataDir::Persistent(_) = self.work_dir {
+            let _ = self.client.stop();
+        }
         let _ = self.process.kill();
     }
 }
