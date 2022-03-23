@@ -21,6 +21,11 @@ fn download_filename() -> String {
     format!("bitcoin-{}-x86_64-linux-gnu.tar.gz", &VERSION)
 }
 
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+fn download_filename() -> String {
+    format!("bitcoin-{}-aarch64-linux-gnu.tar.gz", &VERSION)
+}
+
 fn get_expected_sha256(filename: &str) -> Result<sha256::Hash, ()> {
     let sha256sums_filename = format!("sha256/bitcoin-core-{}-SHA256SUMS", &VERSION);
     #[cfg(any(
