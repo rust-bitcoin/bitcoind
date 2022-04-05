@@ -218,7 +218,11 @@ impl BitcoinD {
 
     /// Launch the bitcoind process from the given `exe` executable with given [Conf] param
     pub fn with_conf<S: AsRef<OsStr>>(exe: S, conf: &Conf) -> Result<BitcoinD, Error> {
-        let work_dir = match (&conf.tmpdir, &conf.staticdir) {
+        let tmpdir = conf
+            .tmpdir
+            .clone()
+            .or_else(|| env::var("TEMPDIR_ROOT").map(PathBuf::from).ok());
+        let work_dir = match (&tmpdir, &conf.staticdir) {
             (Some(_), Some(_)) => return Err(Error::BothDirsSpecified),
             (Some(tmpdir), None) => DataDir::Temporary(TempDir::new_in(tmpdir)?),
             (None, Some(workdir)) => {
