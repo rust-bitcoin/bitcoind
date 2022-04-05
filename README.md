@@ -7,7 +7,8 @@ Utility to run a regtest bitcoind process, useful in integration testing environ
 
 ```rust
 use bitcoincore_rpc::RpcApi;
-let bitcoind = bitcoind::BitcoinD::new("/usr/local/bin/bitcoind").unwrap();
+let exe_path = exe_path().expect("bitcoind executable must be provided in BITCOIND_EXE, or with a feature like '22_0', or be in PATH");
+let bitcoind = bitcoind::BitcoinD::new(exe_path).unwrap();
 assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 ```
 

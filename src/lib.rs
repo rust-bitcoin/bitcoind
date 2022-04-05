@@ -95,8 +95,9 @@ pub enum Error {
     NoFeature,
     /// Returned when calling methods requiring a env var to exist, but it's not
     NoEnvVar,
-    /// Returned when calling methods requiring either a feature or env var, but both are absent
-    NeitherFeatureNorEnvVar,
+    /// Returned when calling methods requiring the bitcoind executable but none is found
+    /// (no feature, no `BITCOIND_EXE`, no `bitcoind` in `PATH` )
+    NoBitcoindExecutableFound,
     /// Returned when calling methods requiring either a feature or anv var, but both are present
     BothFeatureAndEnvVar,
     /// Wrapper of early exit status
@@ -112,7 +113,7 @@ impl fmt::Debug for Error {
             Error::Rpc(e) => write!(f, "{:?}", e),
             Error::NoFeature => write!(f, "Called a method requiring a feature to be set, but it's not"),
             Error::NoEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` to be set, but it's not"),
-            Error::NeitherFeatureNorEnvVar =>  write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but neither are set"),
+            Error::NoBitcoindExecutableFound =>  write!(f, "`bitcoind` executable is required, provide it with one of the following: set env var `BITCOIND_EXE` or use a feature like \"22_0\" or have `bitcoind` executable in the `PATH`"),
             Error::BothFeatureAndEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but both are set"),
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
             Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options")
@@ -417,7 +418,9 @@ pub fn exe_path() -> Result<String, Error> {
         (Ok(_), Ok(_)) => Err(Error::BothFeatureAndEnvVar),
         (Ok(path), Err(_)) => Ok(path),
         (Err(_), Ok(path)) => Ok(path),
-        (Err(_), Err(_)) => Err(Error::NeitherFeatureNorEnvVar),
+        (Err(_), Err(_)) => which::which("bitcoind")
+            .map_err(|_| Error::NoBitcoindExecutableFound)
+            .map(|p| p.display().to_string()),
     }
 }
 
