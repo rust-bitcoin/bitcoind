@@ -304,11 +304,15 @@ impl BitcoinD {
                 // to be compatible with different version, in the end we are only interested if
                 // the call is succesfull not in the returned value.
                 if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
-                    client_base
+                    // Try creating new wallet, if fails due to already existing wallet file
+                    // try loading the same. Return if still errors.
+                    if client_base
                         .create_wallet("default", None, None, None, None)
-                        .unwrap();
-                    break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))
-                        .unwrap();
+                        .is_err()
+                    {
+                        client_base.load_wallet("default")?;
+                    }
+                    break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))?;
                 }
             }
         };
@@ -375,7 +379,7 @@ impl BitcoinD {
 impl Drop for BitcoinD {
     fn drop(&mut self) {
         if let DataDir::Persistent(_) = self.work_dir {
-            let _ = self.client.stop();
+            let _ = self.stop();
         }
         let _ = self.process.kill();
     }
@@ -436,6 +440,7 @@ mod test {
     use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
     use std::net::SocketAddrV4;
+    use tempfile::TempDir;
 
     #[test]
     fn test_local_ip() {
@@ -488,6 +493,40 @@ mod test {
         let other_bitcoind = BitcoinD::with_conf(&exe, &other_conf).unwrap();
         assert_eq!(peers_connected(&bitcoind.client), 1);
         assert_eq!(peers_connected(&other_bitcoind.client), 1);
+    }
+
+    #[test]
+    fn test_data_persistence() {
+        // Create a Conf with staticdir type
+        let mut conf = Conf::default();
+        let datadir = TempDir::new().unwrap();
+        conf.staticdir = Some(datadir.path().to_path_buf());
+
+        // Start BitcoinD with persistent db config
+        // Generate 101 blocks
+        // Wallet balance should be 50
+        let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
+        let core_addrs = bitcoind.client.get_new_address(None, None).unwrap();
+        bitcoind
+            .client
+            .generate_to_address(101, &core_addrs)
+            .unwrap();
+        let wallet_balance_1 = bitcoind.client.get_balance(None, None).unwrap();
+        let best_block_1 = bitcoind.client.get_best_block_hash().unwrap();
+
+        drop(bitcoind);
+
+        // Start a new BitcoinD with the same datadir
+        let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
+
+        let wallet_balance_2 = bitcoind.client.get_balance(None, None).unwrap();
+        let best_block_2 = bitcoind.client.get_best_block_hash().unwrap();
+
+        // Check node chain data persists
+        assert_eq!(best_block_1, best_block_2);
+
+        // Check the node wallet balance persists
+        assert_eq!(wallet_balance_1, wallet_balance_2);
     }
 
     #[test]
