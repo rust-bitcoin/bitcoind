@@ -1,4 +1,5 @@
 pub const HAS_FEATURE: bool = cfg!(any(
+    feature = "23_0",
     feature = "22_0",
     feature = "0_21_1",
     feature = "0_21_0",
@@ -12,6 +13,7 @@ pub const HAS_FEATURE: bool = cfg!(any(
 ));
 
 #[cfg(not(any(
+    feature = "23_0",
     feature = "22_0",
     feature = "0_21_1",
     feature = "0_21_0",
@@ -24,6 +26,9 @@ pub const HAS_FEATURE: bool = cfg!(any(
     feature = "0_17_1",
 )))]
 pub const VERSION: &str = "N/A";
+
+#[cfg(feature = "23_0")]
+pub const VERSION: &str = "23.0";
 
 #[cfg(feature = "22_0")]
 pub const VERSION: &str = "22.0";
