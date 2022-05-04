@@ -80,6 +80,7 @@ fn main() {
 
         let _size = ureq::get(&url)
             .call()
+            .unwrap()
             .into_reader()
             .read_to_end(&mut downloaded_bytes)
             .unwrap();
