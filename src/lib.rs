@@ -285,6 +285,7 @@ impl BitcoinD {
         let node_url_default = format!("{}/wallet/default", rpc_url);
         // wait bitcoind is ready, use default wallet
         let client = loop {
+            log::debug!("[bug: -rpcuser and -rpcpassword] infinite loop");
             if let Some(status) = process.try_wait()? {
                 if conf.attempts > 0 {
                     warn!("early exit with: {:?}. Trying to launch again ({} attempts remaining), maybe some other process used our available port", status, conf.attempts);
@@ -298,6 +299,10 @@ impl BitcoinD {
             }
             thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
+            log::debug!(
+                "[bug: -rpcuser and -rpcpassword] auth: {:?}",
+                Auth::CookieFile(cookie_file.clone()).get_user_pass()
+            );
             let client_result = Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()));
             if let Ok(client_base) = client_result {
                 // RpcApi has get_blockchain_info method, however being generic with `Value` allows
@@ -435,7 +440,7 @@ pub fn exe_path() -> Result<String, Error> {
 #[cfg(test)]
 mod test {
     use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
-    use crate::bitcoincore_rpc::Client;
+    use crate::bitcoincore_rpc::{Auth, Client};
     use crate::exe_path;
     use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
@@ -611,6 +616,55 @@ mod test {
             bitcoind.create_wallet("bob").is_err(),
             "wallet already exist"
         );
+    }
+
+    #[test]
+    fn test_bitcoind_rpcuser_and_rpcpassword() {
+        let exe = init();
+
+        let mut conf = Conf::default();
+        conf.args.push("-rpcuser=bitcoind");
+        conf.args.push("-rpcpassword=bitcoind");
+
+        let bitcoind = BitcoinD::with_conf(exe, &conf).unwrap();
+        let client = Client::new(
+            bitcoind.rpc_url().as_str(),
+            Auth::UserPass("bitcoind".to_string(), "bitcoind".to_string()),
+        )
+        .unwrap();
+
+        let info = client.get_blockchain_info().unwrap();
+        assert_eq!(0, info.blocks);
+
+        let address = client.get_new_address(None, None).unwrap();
+        let _ = client.generate_to_address(1, &address).unwrap();
+        let info = bitcoind.client.get_blockchain_info().unwrap();
+        assert_eq!(1, info.blocks);
+    }
+
+    #[test]
+    fn test_bitcoind_rpcauth() {
+        let exe = init();
+
+        let mut conf = Conf::default();
+        // rpcauth generated with [rpcauth.py](https://github.com/bitcoin/bitcoin/blob/master/share/rpcauth/rpcauth.py)
+        // this could be also added to bitcoind, example: [RpcAuth](https://github.com/testcontainers/testcontainers-rs/blob/dev/testcontainers/src/images/coblox_bitcoincore.rs#L39-L91)
+        conf.args.push("-rpcauth=bitcoind:cccd5d7fd36e55c1b8576b8077dc1b83$60b5676a09f8518dcb4574838fb86f37700cd690d99bd2fdc2ea2bf2ab80ead6");
+
+        let bitcoind = BitcoinD::with_conf(exe, &conf).unwrap();
+        let client = Client::new(
+            bitcoind.rpc_url().as_str(),
+            Auth::UserPass("bitcoind".to_string(), "bitcoind".to_string()),
+        )
+        .unwrap();
+
+        let info = client.get_blockchain_info().unwrap();
+        assert_eq!(0, info.blocks);
+
+        let address = client.get_new_address(None, None).unwrap();
+        let _ = client.generate_to_address(1, &address).unwrap();
+        let info = bitcoind.client.get_blockchain_info().unwrap();
+        assert_eq!(1, info.blocks);
     }
 
     fn peers_connected(client: &Client) -> usize {
