@@ -26,7 +26,7 @@ fn download_filename() -> String {
     format!("bitcoin-{}-aarch64-linux-gnu.tar.gz", &VERSION)
 }
 
-fn get_expected_sha256(filename: &str) -> Result<sha256::Hash, ()> {
+fn get_expected_sha256(filename: &str) -> sha256::Hash {
     let sha256sums_filename = format!("sha256/bitcoin-core-{}-SHA256SUMS", &VERSION);
     #[cfg(any(
         feature = "0_21_1",
@@ -40,14 +40,19 @@ fn get_expected_sha256(filename: &str) -> Result<sha256::Hash, ()> {
         feature = "0_17_1",
     ))]
     let sha256sums_filename = format!("{}.asc", sha256sums_filename);
-    let file = File::open(sha256sums_filename).map_err(|_| ())?;
+    let file = File::open(&sha256sums_filename).unwrap();
     for line in BufReader::new(file).lines().flatten() {
         let tokens: Vec<_> = line.split("  ").collect();
         if tokens.len() == 2 && filename == tokens[1] {
-            return sha256::Hash::from_str(tokens[0]).map_err(|_| ());
+            return sha256::Hash::from_str(tokens[0]).unwrap();
         }
     }
-    Err(())
+    panic!(
+        "Couldn't find hash for `{}` in `{}`:\n{}",
+        filename,
+        sha256sums_filename,
+        std::fs::read_to_string(&sha256sums_filename).unwrap()
+    );
 }
 
 fn main() {
@@ -55,7 +60,7 @@ fn main() {
         return;
     }
     let download_filename = download_filename();
-    let expected_hash = get_expected_sha256(&download_filename).unwrap();
+    let expected_hash = get_expected_sha256(&download_filename);
     let out_dir = std::env::var_os("OUT_DIR").unwrap();
     let bitcoin_exe_home = Path::new(&out_dir).join("bitcoin");
     if !bitcoin_exe_home.exists() {
