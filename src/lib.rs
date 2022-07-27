@@ -16,6 +16,7 @@ mod versions;
 use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use log::{debug, error, warn};
+use regex::Regex;
 use std::ffi::OsStr;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
@@ -104,6 +105,9 @@ pub enum Error {
     EarlyExit(ExitStatus),
     /// Returned when both tmpdir and staticdir is specified in `Conf` options
     BothDirsSpecified,
+    //// Returned when -rpcuser and/or -rpcpassword is used in `Conf` args
+    ///  It will soon be deprecated, please use -rpcauth instead
+    RpcUserAndPasswordUsed,
 }
 
 impl fmt::Debug for Error {
@@ -116,7 +120,8 @@ impl fmt::Debug for Error {
             Error::NoBitcoindExecutableFound =>  write!(f, "`bitcoind` executable is required, provide it with one of the following: set env var `BITCOIND_EXE` or use a feature like \"22_0\" or have `bitcoind` executable in the `PATH`"),
             Error::BothFeatureAndEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but both are set"),
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
-            Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options")
+            Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options"),
+            Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication")
         }
     }
 }
@@ -130,6 +135,8 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
+
+const INVALID_ARGS: &str = r"^(-rpcuser|-rpcpassword).*";
 
 /// The node configuration parameters, implements a convenient [Default] for most common use.
 ///
@@ -268,24 +275,25 @@ impl BitcoinD {
         let datadir_arg = format!("-datadir={}", work_dir_path.display());
         let rpc_arg = format!("-rpcport={}", rpc_port);
         let default_args = [&datadir_arg, &rpc_arg];
+        let conf_args = validate_args(conf.args.clone())?;
 
         debug!(
-            "launching {:?} with args: {:?} {:?} AND custom args",
+            "launching {:?} with args: {:?} {:?} AND custom args: {:?}",
             exe.as_ref(),
             default_args,
-            p2p_args
+            p2p_args,
+            conf_args
         );
         let mut process = Command::new(exe.as_ref())
             .args(&default_args)
             .args(&p2p_args)
-            .args(&conf.args)
+            .args(&conf_args)
             .stdout(stdout)
             .spawn()?;
 
         let node_url_default = format!("{}/wallet/default", rpc_url);
         // wait bitcoind is ready, use default wallet
         let client = loop {
-            log::debug!("[bug: -rpcuser and -rpcpassword] infinite loop");
             if let Some(status) = process.try_wait()? {
                 if conf.attempts > 0 {
                     warn!("early exit with: {:?}. Trying to launch again ({} attempts remaining), maybe some other process used our available port", status, conf.attempts);
@@ -299,10 +307,6 @@ impl BitcoinD {
             }
             thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
-            log::debug!(
-                "[bug: -rpcuser and -rpcpassword] auth: {:?}",
-                Auth::CookieFile(cookie_file.clone()).get_user_pass()
-            );
             let client_result = Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()));
             if let Ok(client_base) = client_result {
                 // RpcApi has get_blockchain_info method, however being generic with `Value` allows
@@ -437,12 +441,25 @@ pub fn exe_path() -> Result<String, Error> {
     }
 }
 
+/// Validate the specified arg if there is any unavailable or deprecated one
+pub fn validate_args(args: Vec<&str>) -> Result<Vec<&str>, Error> {
+    let _ = args.iter().try_for_each(|arg| {
+        // other kind of invalid arguments can be added into the regex if needed
+        if Regex::new(INVALID_ARGS).unwrap().is_match(arg) {
+            return Err(Error::RpcUserAndPasswordUsed);
+        }
+        Ok(())
+    })?;
+
+    Ok(args)
+}
+
 #[cfg(test)]
 mod test {
     use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
     use crate::bitcoincore_rpc::{Auth, Client};
     use crate::exe_path;
-    use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
+    use crate::{get_available_port, BitcoinD, Conf, Error, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
     use std::net::SocketAddrV4;
     use tempfile::TempDir;
@@ -626,20 +643,10 @@ mod test {
         conf.args.push("-rpcuser=bitcoind");
         conf.args.push("-rpcpassword=bitcoind");
 
-        let bitcoind = BitcoinD::with_conf(exe, &conf).unwrap();
-        let client = Client::new(
-            bitcoind.rpc_url().as_str(),
-            Auth::UserPass("bitcoind".to_string(), "bitcoind".to_string()),
-        )
-        .unwrap();
+        let bitcoind = BitcoinD::with_conf(exe, &conf);
 
-        let info = client.get_blockchain_info().unwrap();
-        assert_eq!(0, info.blocks);
-
-        let address = client.get_new_address(None, None).unwrap();
-        let _ = client.generate_to_address(1, &address).unwrap();
-        let info = bitcoind.client.get_blockchain_info().unwrap();
-        assert_eq!(1, info.blocks);
+        assert!(bitcoind.is_err());
+        assert!(matches!(bitcoind, Err(Error::RpcUserAndPasswordUsed)));
     }
 
     #[test]
