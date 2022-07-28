@@ -16,7 +16,6 @@ mod versions;
 use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use log::{debug, error, warn};
-use regex::Regex;
 use std::ffi::OsStr;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::path::PathBuf;
@@ -105,8 +104,8 @@ pub enum Error {
     EarlyExit(ExitStatus),
     /// Returned when both tmpdir and staticdir is specified in `Conf` options
     BothDirsSpecified,
-    //// Returned when -rpcuser and/or -rpcpassword is used in `Conf` args
-    ///  It will soon be deprecated, please use -rpcauth instead
+    /// Returned when -rpcuser and/or -rpcpassword is used in `Conf` args
+    /// It will soon be deprecated, please use -rpcauth instead
     RpcUserAndPasswordUsed,
 }
 
@@ -136,7 +135,7 @@ impl std::error::Error for Error {}
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
-const INVALID_ARGS: &str = r"^(-rpcuser|-rpcpassword).*";
+const INVALID_ARGS: [&str; 2] = ["-rpcuser", "-rpcpassword"];
 
 /// The node configuration parameters, implements a convenient [Default] for most common use.
 ///
@@ -443,9 +442,9 @@ pub fn exe_path() -> Result<String, Error> {
 
 /// Validate the specified arg if there is any unavailable or deprecated one
 pub fn validate_args(args: Vec<&str>) -> Result<Vec<&str>, Error> {
-    let _ = args.iter().try_for_each(|arg| {
-        // other kind of invalid arguments can be added into the regex if needed
-        if Regex::new(INVALID_ARGS).unwrap().is_match(arg) {
+    args.iter().try_for_each(|arg| {
+        // other kind of invalid arguments can be added into the list if needed
+        if INVALID_ARGS.iter().any(|x| arg.starts_with(x)) {
             return Err(Error::RpcUserAndPasswordUsed);
         }
         Ok(())
@@ -659,8 +658,9 @@ mod test {
         conf.args.push("-rpcauth=bitcoind:cccd5d7fd36e55c1b8576b8077dc1b83$60b5676a09f8518dcb4574838fb86f37700cd690d99bd2fdc2ea2bf2ab80ead6");
 
         let bitcoind = BitcoinD::with_conf(exe, &conf).unwrap();
+
         let client = Client::new(
-            bitcoind.rpc_url().as_str(),
+            format!("{}/wallet/default", bitcoind.rpc_url().as_str()).as_str(),
             Auth::UserPass("bitcoind".to_string(), "bitcoind".to_string()),
         )
         .unwrap();
