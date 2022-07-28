@@ -17,8 +17,12 @@ jobs:
         os: [ ubuntu-20.04 ]
         feature: [ "23_0", "22_0", "0_21_1", "0_21_0", "0_20_1", "0_20_0", "0_19_1", "0_19_0_1", "0_18_1", "0_18_0", "0_17_1"]
         include:
-          - os: "macos-10.15"
+          - os: "macos-11"
             feature: "0_21_1"
+          - os: "macos-11"
+            feature: "22_0"
+          - os: "macos-11"
+            feature: "23_0"
 
     steps:
       - run: df -h
