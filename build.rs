@@ -135,8 +135,10 @@ fn main() {
                 };
 
                 if outpath.file_name().map(|s| s.to_str()) == Some(Some("bitcoind.exe")) {
-                    bitcoin_exe_home.push(outpath);
-                    std::fs::create_dir_all(&bitcoin_exe_home).unwrap();
+                    for d in outpath.iter() {
+                        bitcoin_exe_home.push(d);
+                    }
+                    std::fs::create_dir_all(&bitcoin_exe_home.parent().unwrap()).unwrap();
                     println!("{:?}", bitcoin_exe_home);
                     let mut outfile = std::fs::File::create(&bitcoin_exe_home).unwrap();
                     io::copy(&mut file, &mut outfile).unwrap();

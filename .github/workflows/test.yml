@@ -32,22 +32,23 @@ jobs:
       - uses: Swatinem/rust-cache@v1.2.0
         with:
           key: ${{ matrix.feature }}${{ matrix.os }}
-        if: ${{ matrix.os != 'macos-10.15' }} # issue with hard-links on mac
+        if: ${{ matrix.os != 'macos-11' }} # issue with hard-links on mac
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
       #- run: echo "TEMPDIR_ROOT=/dev/shm" >> $GITHUB_ENV # conflicts with test `test_data_persistence`
-        if: ${{ matrix.os != 'macos-10.15' }}
+      #  if: ${{ matrix.os != 'macos-11' }}
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --features ${{ matrix.feature }}
       - run: echo "BITCOIND_EXE=$(find ./target/debug -name bitcoind)" >> $GITHUB_ENV
+        if: ${{ matrix.os != 'windows-2019' }} 
       - uses: actions-rs/cargo@v1
         with:
           command: test
-        if: ${{ matrix.feature != '0_18_1' &&  matrix.feature != '0_18_0' && matrix.feature != '0_17_1' }} # would fail `test_multi_wallet`
+        if: ${{ matrix.feature != '0_18_1' &&  matrix.feature != '0_18_0' && matrix.feature != '0_17_1' && matrix.os != 'windows-2019' }} # would fail `test_multi_wallet`
 
 
   cosmetics:
