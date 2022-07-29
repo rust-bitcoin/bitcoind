@@ -1,7 +1,7 @@
 use bitcoin_hashes::{sha256, Hash};
 use flate2::read::GzDecoder;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader, Cursor, Read};
 use std::path::Path;
 use std::str::FromStr;
 use tar::Archive;
@@ -43,7 +43,7 @@ fn download_filename() -> String {
 
 #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
 fn download_filename() -> String {
-    format!("bitcoin-{}-win64-unsigned.tar.gz", &VERSION)
+    format!("bitcoin-{}-win64.zip", &VERSION)
 }
 
 fn get_expected_sha256(filename: &str) -> sha256::Hash {
@@ -82,7 +82,7 @@ fn main() {
     let download_filename = download_filename();
     let expected_hash = get_expected_sha256(&download_filename);
     let out_dir = std::env::var_os("OUT_DIR").unwrap();
-    let bitcoin_exe_home = Path::new(&out_dir).join("bitcoin");
+    let mut bitcoin_exe_home = Path::new(&out_dir).join("bitcoin");
     if !bitcoin_exe_home.exists() {
         std::fs::create_dir(&bitcoin_exe_home).unwrap();
     }
@@ -101,9 +101,10 @@ fn main() {
             "https://bitcoincore.org/bin/bitcoin-core-{}/{}",
             VERSION, download_filename
         );
+        println!("url:{}", url);
         let mut downloaded_bytes = Vec::new();
         let resp = ureq::get(&url).call();
-        assert_eq!(resp.status(), 200);
+        assert_eq!(resp.status(), 200, "url {} didn't return 200", url);
 
         let _size = resp
             .into_reader()
@@ -111,13 +112,35 @@ fn main() {
             .unwrap();
         let downloaded_hash = sha256::Hash::hash(&downloaded_bytes);
         assert_eq!(expected_hash, downloaded_hash);
-        let d = GzDecoder::new(&downloaded_bytes[..]);
 
-        let mut archive = Archive::new(d);
-        for mut entry in archive.entries().unwrap().flatten() {
-            if let Ok(file) = entry.path() {
-                if file.ends_with("bitcoind") {
-                    entry.unpack_in(&bitcoin_exe_home).unwrap();
+        if download_filename.ends_with(".tar.gz") {
+            let d = GzDecoder::new(&downloaded_bytes[..]);
+
+            let mut archive = Archive::new(d);
+            for mut entry in archive.entries().unwrap().flatten() {
+                if let Ok(file) = entry.path() {
+                    if file.ends_with("bitcoind") {
+                        entry.unpack_in(&bitcoin_exe_home).unwrap();
+                    }
+                }
+            }
+        } else if download_filename.ends_with(".zip") {
+            let cursor = Cursor::new(downloaded_bytes);
+            let mut archive = zip::ZipArchive::new(cursor).unwrap();
+            for i in 0..zip::ZipArchive::len(&archive) {
+                let mut file = archive.by_index(i).unwrap();
+                let outpath = match file.enclosed_name() {
+                    Some(path) => path.to_owned(),
+                    None => continue,
+                };
+
+                if outpath.file_name().map(|s| s.to_str()) == Some(Some("bitcoind.exe")) {
+                    bitcoin_exe_home.push(outpath);
+                    std::fs::create_dir_all(&bitcoin_exe_home).unwrap();
+                    println!("{:?}", bitcoin_exe_home);
+                    let mut outfile = std::fs::File::create(&bitcoin_exe_home).unwrap();
+                    io::copy(&mut file, &mut outfile).unwrap();
+                    break;
                 }
             }
         }

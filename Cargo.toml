@@ -21,6 +21,7 @@ env_logger = "0.8"
 [build-dependencies]
 bitcoin_hashes = "0.10"
 tar = "0.4"
+zip = "0.6"
 
 # allows to keep MSRV 1.41.1
 ureq = "1.0"  

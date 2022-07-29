@@ -416,11 +416,17 @@ impl From<bitcoincore_rpc::Error> for Error {
 
 /// Provide the bitcoind executable path if a version feature has been specified
 pub fn downloaded_exe_path() -> Result<String, Error> {
+    let ext = if cfg!(target_os = "windows") {
+        ".exe"
+    } else {
+        ""
+    };
     if versions::HAS_FEATURE {
         Ok(format!(
-            "{}/bitcoin/bitcoin-{}/bin/bitcoind",
+            "{}/bitcoin/bitcoin-{}/bin/bitcoind{}",
             env!("OUT_DIR"),
-            versions::VERSION
+            versions::VERSION,
+            ext
         ))
     } else {
         Err(Error::NoFeature)
