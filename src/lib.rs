@@ -608,7 +608,7 @@ mod test {
             Amount::from_btc(5000.0).unwrap(),
             bob.get_balances().unwrap().mine.immature
         );
-        alice
+        let _txid = alice
             .send_to_address(
                 &bob_address,
                 Amount::from_btc(1.0).unwrap(),
@@ -624,6 +624,14 @@ mod test {
             alice.get_balances().unwrap().mine.trusted < Amount::from_btc(49.0).unwrap()
                 && alice.get_balances().unwrap().mine.trusted > Amount::from_btc(48.9).unwrap()
         );
+
+        // bob wallet may not be immediately updated
+        for _ in 0..30 {
+            if bob.get_balances().unwrap().mine.untrusted_pending.as_sat() > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
         assert_eq!(
             Amount::from_btc(1.0).unwrap(),
             bob.get_balances().unwrap().mine.untrusted_pending
