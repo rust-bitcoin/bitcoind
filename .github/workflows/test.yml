@@ -23,6 +23,8 @@ jobs:
             feature: "22_0"
           - os: "macos-11"
             feature: "23_0"
+          - os: "windows-2019"
+            feature: "23_0"
 
     steps:
       - run: df -h
