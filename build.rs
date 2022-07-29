@@ -14,7 +14,7 @@ include!("src/versions.rs");
 ))]
 fn download_filename() -> String {
     if cfg!(any(
-        feature = "0_22_1",
+        feature = "22_0",
         feature = "0_21_1",
         feature = "0_21_0",
         feature = "0_20_1",
