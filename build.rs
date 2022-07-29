@@ -102,13 +102,13 @@ fn main() {
             VERSION, download_filename
         );
         let mut downloaded_bytes = Vec::new();
+        let resp = ureq::get(&url).call();
+        assert_eq!(resp.status(), 200);
 
-        let _size = ureq::get(&url)
-            .call()
+        let _size = resp
             .into_reader()
             .read_to_end(&mut downloaded_bytes)
             .unwrap();
-
         let downloaded_hash = sha256::Hash::hash(&downloaded_bytes);
         assert_eq!(expected_hash, downloaded_hash);
         let d = GzDecoder::new(&downloaded_bytes[..]);
