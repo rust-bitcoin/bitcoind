@@ -290,7 +290,6 @@ impl BitcoinD {
             .stdout(stdout)
             .spawn()?;
 
-        let node_url_default = format!("{}/wallet/default", rpc_url);
         // wait bitcoind is ready, use default wallet
         let client = loop {
             if let Some(status) = process.try_wait()? {
@@ -304,7 +303,6 @@ impl BitcoinD {
                     return Err(Error::EarlyExit(status));
                 }
             }
-            thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
             let client_result = Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()));
             if let Ok(client_base) = client_result {
@@ -312,17 +310,10 @@ impl BitcoinD {
                 // to be compatible with different version, in the end we are only interested if
                 // the call is succesfull not in the returned value.
                 if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
-                    // Try creating new wallet, if fails due to already existing wallet file
-                    // try loading the same. Return if still errors.
-                    if client_base
-                        .create_wallet("default", None, None, None, None)
-                        .is_err()
-                    {
-                        client_base.load_wallet("default")?;
-                    }
-                    break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))?;
+                    break Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()))?;
                 }
             }
+            thread::sleep(Duration::from_millis(500));
         };
 
         Ok(BitcoinD {
