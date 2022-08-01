@@ -473,6 +473,7 @@ mod test {
     fn test_bitcoind() {
         let exe = init();
         let bitcoind = BitcoinD::new(exe).unwrap();
+        bitcoind.client.create_wallet("default", None, None, None, None).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(0, info.blocks);
         let address = bitcoind.client.get_new_address(None, None).unwrap();
@@ -525,6 +526,7 @@ mod test {
         // Generate 101 blocks
         // Wallet balance should be 50
         let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
+        bitcoind.client.create_wallet("default", None, None, None, None).unwrap();
         let core_addrs = bitcoind.client.get_new_address(None, None).unwrap();
         bitcoind
             .client
@@ -537,6 +539,7 @@ mod test {
 
         // Start a new BitcoinD with the same datadir
         let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
+        bitcoind.client.load_wallet("default").unwrap();
 
         let wallet_balance_2 = bitcoind.client.get_balance(None, None).unwrap();
         let best_block_2 = bitcoind.client.get_best_block_hash().unwrap();
@@ -664,6 +667,7 @@ mod test {
         conf.args.push("-rpcauth=bitcoind:cccd5d7fd36e55c1b8576b8077dc1b83$60b5676a09f8518dcb4574838fb86f37700cd690d99bd2fdc2ea2bf2ab80ead6");
 
         let bitcoind = BitcoinD::with_conf(exe, &conf).unwrap();
+        bitcoind.client.create_wallet("default", None, None, None, None).unwrap();
 
         let client = Client::new(
             format!("{}/wallet/default", bitcoind.rpc_url().as_str()).as_str(),
