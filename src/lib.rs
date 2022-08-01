@@ -313,7 +313,7 @@ impl BitcoinD {
                     break Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()))?;
                 }
             }
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_millis(100));
         };
 
         Ok(BitcoinD {
