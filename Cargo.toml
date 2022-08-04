@@ -12,7 +12,6 @@ edition = "2018"
 bitcoincore-rpc = "0.15.0"
 tempfile = "3.1"
 log = "0.4"
-home = "0.5.3"  # use same ver in build-dep
 which = "4.2.5"
 
 [dev-dependencies]
