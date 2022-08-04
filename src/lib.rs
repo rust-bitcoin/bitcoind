@@ -63,8 +63,6 @@ impl DataDir {
 #[derive(Debug, Clone)]
 /// Contains all the information to connect to this node
 pub struct ConnectParams {
-    /// Path to the node datadir
-    pub datadir: PathBuf,
     /// Path to the node cookie file, useful for other client to connect to the node
     pub cookie_file: PathBuf,
     /// Url of the rpc of the node, useful for other client to connect to the node
@@ -331,7 +329,6 @@ impl BitcoinD {
             client,
             work_dir,
             params: ConnectParams {
-                datadir: work_dir_path,
                 cookie_file,
                 rpc_socket,
                 p2p_socket,
