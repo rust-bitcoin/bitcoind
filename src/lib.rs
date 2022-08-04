@@ -26,6 +26,7 @@ use tempfile::TempDir;
 
 pub extern crate bitcoincore_rpc;
 pub extern crate tempfile;
+pub extern crate which;
 
 /// Struct representing the bitcoind process with related information
 pub struct BitcoinD {
