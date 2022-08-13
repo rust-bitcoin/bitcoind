@@ -197,6 +197,9 @@ pub struct Conf<'a> {
     /// happen they are used at the time the process is spawn. When retrying other available ports
     /// are returned reducing the probability of conflicts to negligible.
     pub attempts: u8,
+
+    /// If set to `true` a default wallet will not be created upon startup.
+    pub skip_default_wallet_creation: bool,
 }
 
 impl Default for Conf<'_> {
@@ -209,6 +212,7 @@ impl Default for Conf<'_> {
             tmpdir: None,
             staticdir: None,
             attempts: 3,
+            skip_default_wallet_creation: false,
         }
     }
 }
@@ -303,7 +307,6 @@ impl BitcoinD {
                     return Err(Error::EarlyExit(status));
                 }
             }
-            thread::sleep(Duration::from_millis(500));
             assert!(process.stderr.is_none());
             let client_result = Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()));
             if let Ok(client_base) = client_result {
@@ -311,17 +314,25 @@ impl BitcoinD {
                 // to be compatible with different version, in the end we are only interested if
                 // the call is succesfull not in the returned value.
                 if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
-                    // Try creating new wallet, if fails due to already existing wallet file
-                    // try loading the same. Return if still errors.
-                    if client_base
-                        .create_wallet("default", None, None, None, None)
-                        .is_err()
-                    {
-                        client_base.load_wallet("default")?;
+                    if !conf.skip_default_wallet_creation {
+                        // Try creating new wallet, if fails due to already existing wallet file
+                        // try loading the same. Return if still errors.
+                        if client_base
+                            .create_wallet("default", None, None, None, None)
+                            .is_err()
+                        {
+                            client_base.load_wallet("default")?;
+                        }
+                        break Client::new(
+                            &node_url_default,
+                            Auth::CookieFile(cookie_file.clone()),
+                        )?;
+                    } else {
+                        break client_base;
                     }
-                    break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))?;
                 }
             }
+            thread::sleep(Duration::from_millis(100));
         };
 
         Ok(BitcoinD {
@@ -685,6 +696,23 @@ mod test {
         let _ = client.generate_to_address(1, &address).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(1, info.blocks);
+    }
+
+    #[test]
+    fn test_skip_wallet_creation() {
+        let mut conf = Conf::default();
+
+        conf.skip_default_wallet_creation = false;
+
+        let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
+
+        assert!(bitcoind.client.get_new_address(None, None).is_ok());
+
+        conf.skip_default_wallet_creation = true;
+
+        let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
+
+        assert!(bitcoind.client.get_new_address(None, None).is_err());
     }
 
     fn peers_connected(client: &Client) -> usize {
