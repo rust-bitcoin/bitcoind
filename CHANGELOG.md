@@ -15,7 +15,7 @@
 ### Fixed
 
 - fix bitcoin 0.23 on MacOS X
-- fix test flakyness
+- fix test flakiness
 
 ### Removed
 
