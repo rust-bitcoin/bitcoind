@@ -1,6 +1,6 @@
 [package]
 name = "bitcoind"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Riccardo Casatta <riccardo@casatta.it>"]
 description = "Utility to run a regtest bitcoind process, useful in integration testing environment"
 license = "MIT"
