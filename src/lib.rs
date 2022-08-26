@@ -642,7 +642,7 @@ mod test {
 
         // bob wallet may not be immediately updated
         for _ in 0..30 {
-            if bob.get_balances().unwrap().mine.untrusted_pending.as_sat() > 0 {
+            if bob.get_balances().unwrap().mine.untrusted_pending.to_sat() > 0 {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(100));
