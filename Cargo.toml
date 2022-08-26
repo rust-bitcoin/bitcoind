@@ -18,7 +18,7 @@ which = "4.2.5"
 env_logger = "0.8"
 
 [build-dependencies]
-bitcoin_hashes = "0.10"
+bitcoin_hashes = "0.11"
 tar = "0.4"
 zip = "0.5"
 
