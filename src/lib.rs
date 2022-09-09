@@ -290,6 +290,7 @@ impl BitcoinD {
             .spawn()?;
 
         let node_url_default = format!("{}/wallet/default", rpc_url);
+        let mut i = 0;
         // wait bitcoind is ready, use default wallet
         let client = loop {
             if let Some(status) = process.try_wait()? {
@@ -303,9 +304,10 @@ impl BitcoinD {
                     return Err(Error::EarlyExit(status));
                 }
             }
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_millis(100));
             assert!(process.stderr.is_none());
             let client_result = Client::new(&rpc_url, Auth::CookieFile(cookie_file.clone()));
+
             if let Ok(client_base) = client_result {
                 // RpcApi has get_blockchain_info method, however being generic with `Value` allows
                 // to be compatible with different version, in the end we are only interested if
@@ -322,6 +324,14 @@ impl BitcoinD {
                     break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))?;
                 }
             }
+
+            debug!(
+                "bitcoin client for process {} not ready ({})",
+                process.id(),
+                i
+            );
+
+            i += 1;
         };
 
         Ok(BitcoinD {
@@ -632,7 +642,7 @@ mod test {
 
         // bob wallet may not be immediately updated
         for _ in 0..30 {
-            if bob.get_balances().unwrap().mine.untrusted_pending.as_sat() > 0 {
+            if bob.get_balances().unwrap().mine.untrusted_pending.to_sat() > 0 {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(100));
