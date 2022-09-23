@@ -1,5 +1,11 @@
 # Changelog
 
+## Release 0.27.1
+
+### Changed
+
+- use bitcoin_hashes 0.11 also for build dep
+
 ## Release 0.27.0
 
 ### Added
