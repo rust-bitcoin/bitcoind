@@ -17,7 +17,7 @@ assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 When a feature like `22_0` is selected, the build script will automatically download the bitcoin core version `22.0`, verify the hashes and place it in the build directory for this crate.
 Use utility function `downloaded_exe_path()` to get the downloaded executable path.
 
-### Example 
+### Example
 
 In your project Cargo.toml, activate the following features
 
@@ -35,7 +35,7 @@ let bitcoind = bitcoind::BitcoinD::new(bitcoind::downloaded_exe_path().unwrap())
 
 ## MSRV
 
-1.41.1
+1.53
 
 ## Issues with traditional approach
 
@@ -50,7 +50,7 @@ I used integration testing based on external bash script launching needed extern
 
   * It waits until bitcoind daemon become ready to accept RPC commands
   * bitcoind use a temporary directory as datadir. You can specify the root of your temp directories so that you have node's datadir in a RAM disk (eg `/dev/shm`)
-  * Free ports are asked to the OS (a low probability race condition is still possible) 
+  * Free ports are asked to the OS (a low probability race condition is still possible)
   * the process is killed when the struct goes out of scope no matter how the test finishes
   * allows easy spawning of dependent process like https://github.com/RCasatta/electrsd
 

@@ -22,8 +22,7 @@ bitcoin_hashes = "0.11"
 tar = "0.4"
 zip = "0.5"
 
-# allows to keep MSRV 1.41.1
-ureq = "1.0"  
+ureq = "2.5.0"
 filetime = "=0.2.15"
 flate2 = "=1.0.22"
 

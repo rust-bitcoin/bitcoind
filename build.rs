@@ -103,7 +103,7 @@ fn main() {
         );
         println!("url:{}", url);
         let mut downloaded_bytes = Vec::new();
-        let resp = ureq::get(&url).call();
+        let resp = ureq::get(&url).call().unwrap();
         assert_eq!(resp.status(), 200, "url {} didn't return 200", url);
 
         let _size = resp
