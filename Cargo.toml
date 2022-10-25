@@ -6,7 +6,7 @@ description = "Utility to run a regtest bitcoind process, useful in integration 
 license = "MIT"
 repository = "https://github.com/RCasatta/bitcoind"
 documentation = "https://docs.rs/bitcoind/"
-rust-version = "1.56"
+rust-version = "1.57"
 edition = "2018"
 
 [dependencies]
@@ -24,7 +24,8 @@ filetime = "0.2"
 flate2 = "1.0"
 tar = "0.4"
 ureq = "2.5.0"
-zip = "0.5"
+zip = "0.6"
+time = "=0.3.10"  # otherwise rust 1.57 fails to select time "^0.3.7"
 
 [features]
 "23_0" = []
