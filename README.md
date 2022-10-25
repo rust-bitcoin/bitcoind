@@ -35,7 +35,7 @@ let bitcoind = bitcoind::BitcoinD::new(bitcoind::downloaded_exe_path().unwrap())
 
 ## MSRV
 
-1.53
+The MSRV is 1.41 for versions up to 0.27.\*, and 1.56 from 0.28.0.
 
 ## Issues with traditional approach
 
