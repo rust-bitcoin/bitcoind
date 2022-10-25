@@ -1,11 +1,12 @@
 [package]
 name = "bitcoind"
-version = "0.27.1"
+version = "0.28.0"
 authors = ["Riccardo Casatta <riccardo@casatta.it>"]
 description = "Utility to run a regtest bitcoind process, useful in integration testing environment"
 license = "MIT"
 repository = "https://github.com/RCasatta/bitcoind"
 documentation = "https://docs.rs/bitcoind/"
+rust-version = "1.56"
 edition = "2018"
 
 [dependencies]

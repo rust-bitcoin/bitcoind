@@ -1,5 +1,13 @@
 # Changelog
 
+## Release 0.28.0
+
+### Changed
+
+- bump `ureq`'s version to `2.5.0`
+- bump `flate2`'s version to `1.0.24`
+- bump `filetime`'s version to `0.2.18`
+
 ## Release 0.27.1
 
 ### Changed
