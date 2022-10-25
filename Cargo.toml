@@ -16,7 +16,7 @@ log = "0.4"
 which = "4.2.5"
 
 [dev-dependencies]
-env_logger = "0.8"
+env_logger = "0.9"
 
 [build-dependencies]
 bitcoin_hashes = "0.11"
