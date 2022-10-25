@@ -44,7 +44,7 @@ jobs:
           command: test
           args: --features ${{ matrix.feature }}
       - run: echo "BITCOIND_EXE=$(find ./target/debug -name bitcoind)" >> $GITHUB_ENV
-        if: ${{ matrix.os != 'windows-2019' }} 
+        if: ${{ matrix.os != 'windows-2019' }}
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ "1.41.1", "stable", "nightly" ]
+        toolchain: [ "1.56.0", "stable", "nightly" ]
 
     steps:
       - uses: actions/checkout@v2
