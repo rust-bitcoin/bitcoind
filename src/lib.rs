@@ -106,6 +106,8 @@ pub enum Error {
     /// Returned when -rpcuser and/or -rpcpassword is used in `Conf` args
     /// It will soon be deprecated, please use -rpcauth instead
     RpcUserAndPasswordUsed,
+    /// The bitcoind binary hasn't permission to execute
+    BinaryPermissionDenied(String),
 }
 
 impl fmt::Debug for Error {
@@ -119,7 +121,8 @@ impl fmt::Debug for Error {
             Error::BothFeatureAndEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but both are set"),
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
             Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options"),
-            Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication")
+            Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication"),
+            Error::BinaryPermissionDenied(exe) => write!(f, "The binary {} has no permission to execute", exe),
         }
     }
 }
@@ -287,7 +290,14 @@ impl BitcoinD {
             .args(&p2p_args)
             .args(&conf_args)
             .stdout(stdout)
-            .spawn()?;
+            .spawn()
+            .map_err(|e| {
+                if e.kind() == std::io::ErrorKind::PermissionDenied {
+                    Error::BinaryPermissionDenied(format!("{:?}", exe.as_ref()))
+                } else {
+                    Error::Io(e)
+                }
+            })?;
 
         let node_url_default = format!("{}/wallet/default", rpc_url);
         let mut i = 0;
