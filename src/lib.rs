@@ -25,9 +25,10 @@ use std::time::Duration;
 use std::{env, fmt, fs, thread};
 use tempfile::TempDir;
 
-pub extern crate bitcoincore_rpc;
-pub extern crate tempfile;
-pub extern crate which;
+pub use anyhow;
+pub use bitcoincore_rpc;
+pub use tempfile;
+pub use which;
 
 #[derive(Debug)]
 /// Struct representing the bitcoind process with related information
