@@ -311,7 +311,8 @@ impl BitcoinD {
                     warn!("early exit with: {:?}. Trying to launch again ({} attempts remaining), maybe some other process used our available port", status, conf.attempts);
                     let mut conf = conf.clone();
                     conf.attempts -= 1;
-                    return Self::with_conf(exe, &conf);
+                    return Self::with_conf(exe, &conf)
+                        .with_context(|| format!("Remaining attempts {}", conf.attempts));
                 } else {
                     error!("early exit with: {:?}", status);
                     return Err(Error::EarlyExit(status).into());
