@@ -111,8 +111,8 @@ pub enum Error {
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Io(e) => write!(f, "{:?}", e),
-            Error::Rpc(e) => write!(f, "{:?}", e),
+            Error::Io(_) => write!(f, "io::Error"),
+            Error::Rpc(_) => write!(f, "bitcoin_rpc::Error"),
             Error::NoFeature => write!(f, "Called a method requiring a feature to be set, but it's not"),
             Error::NoEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` to be set, but it's not"),
             Error::NoBitcoindExecutableFound =>  write!(f, "`bitcoind` executable is required, provide it with one of the following: set env var `BITCOIND_EXE` or use a feature like \"22_0\" or have `bitcoind` executable in the `PATH`"),
@@ -130,7 +130,15 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Io(e) => Some(e),
+            Error::Rpc(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 const LOCAL_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
 
