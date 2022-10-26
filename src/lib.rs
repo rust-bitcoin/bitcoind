@@ -28,6 +28,7 @@ pub extern crate bitcoincore_rpc;
 pub extern crate tempfile;
 pub extern crate which;
 
+#[derive(Debug)]
 /// Struct representing the bitcoind process with related information
 pub struct BitcoinD {
     /// Process child handle, used to terminate the process when this struct is dropped
@@ -41,6 +42,7 @@ pub struct BitcoinD {
     pub params: ConnectParams,
 }
 
+#[derive(Debug)]
 /// The DataDir struct defining the kind of data directory the node
 /// will contain. Data directory can be either persistent, or temporary.
 pub enum DataDir {
@@ -225,18 +227,18 @@ impl BitcoinD {
     /// Launch the bitcoind process from the given `exe` executable with default args.
     ///
     /// Waits for the node to be ready to accept connections before returning
-    pub fn new<S: AsRef<OsStr>>(exe: S) -> Result<BitcoinD, Error> {
+    pub fn new<S: AsRef<OsStr>>(exe: S) -> anyhow::Result<BitcoinD> {
         BitcoinD::with_conf(exe, &Conf::default())
     }
 
     /// Launch the bitcoind process from the given `exe` executable with given [Conf] param
-    pub fn with_conf<S: AsRef<OsStr>>(exe: S, conf: &Conf) -> Result<BitcoinD, Error> {
+    pub fn with_conf<S: AsRef<OsStr>>(exe: S, conf: &Conf) -> anyhow::Result<BitcoinD> {
         let tmpdir = conf
             .tmpdir
             .clone()
             .or_else(|| env::var("TEMPDIR_ROOT").map(PathBuf::from).ok());
         let work_dir = match (&tmpdir, &conf.staticdir) {
-            (Some(_), Some(_)) => return Err(Error::BothDirsSpecified),
+            (Some(_), Some(_)) => return Err(Error::BothDirsSpecified.into()),
             (Some(tmpdir), None) => DataDir::Temporary(TempDir::new_in(tmpdir)?),
             (None, Some(workdir)) => {
                 fs::create_dir_all(workdir)?;
@@ -309,7 +311,7 @@ impl BitcoinD {
                     return Self::with_conf(exe, &conf);
                 } else {
                     error!("early exit with: {:?}", status);
-                    return Err(Error::EarlyExit(status));
+                    return Err(Error::EarlyExit(status).into());
                 }
             }
             thread::sleep(Duration::from_millis(100));
@@ -381,7 +383,7 @@ impl BitcoinD {
     }
 
     /// Stop the node, waiting correct process termination
-    pub fn stop(&mut self) -> Result<ExitStatus, Error> {
+    pub fn stop(&mut self) -> anyhow::Result<ExitStatus> {
         self.client.stop()?;
         Ok(self.process.wait()?)
     }
@@ -389,7 +391,7 @@ impl BitcoinD {
     #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
     /// Create a new wallet in the running node, and return an RPC client connected to the just
     /// created wallet
-    pub fn create_wallet<T: AsRef<str>>(&self, wallet: T) -> Result<Client, Error> {
+    pub fn create_wallet<T: AsRef<str>>(&self, wallet: T) -> anyhow::Result<Client> {
         let _ = self
             .client
             .create_wallet(wallet.as_ref(), None, None, None, None)?;
@@ -412,7 +414,7 @@ impl Drop for BitcoinD {
 /// Returns a non-used local port if available.
 ///
 /// Note there is a race condition during the time the method check availability and the caller
-pub fn get_available_port() -> Result<u16, Error> {
+pub fn get_available_port() -> anyhow::Result<u16> {
     // using 0 as port let the system assign a port available
     let t = TcpListener::bind(("127.0.0.1", 0))?; // 0 means the OS choose a free port
     Ok(t.local_addr().map(|s| s.port())?)
@@ -431,7 +433,7 @@ impl From<bitcoincore_rpc::Error> for Error {
 }
 
 /// Provide the bitcoind executable path if a version feature has been specified
-pub fn downloaded_exe_path() -> Result<String, Error> {
+pub fn downloaded_exe_path() -> anyhow::Result<String> {
     if versions::HAS_FEATURE {
         let mut path: PathBuf = env!("OUT_DIR").into();
         path.push("bitcoin");
@@ -446,25 +448,25 @@ pub fn downloaded_exe_path() -> Result<String, Error> {
 
         Ok(format!("{}", path.display()))
     } else {
-        Err(Error::NoFeature)
+        Err(Error::NoFeature.into())
     }
 }
 
 /// Returns the daemon executable path if it's provided as a feature or as `BITCOIND_EXE` env var.
 /// Returns error if none or both are set
-pub fn exe_path() -> Result<String, Error> {
+pub fn exe_path() -> anyhow::Result<String> {
     match (downloaded_exe_path(), std::env::var("BITCOIND_EXE")) {
-        (Ok(_), Ok(_)) => Err(Error::BothFeatureAndEnvVar),
+        (Ok(_), Ok(_)) => Err(Error::BothFeatureAndEnvVar.into()),
         (Ok(path), Err(_)) => Ok(path),
         (Err(_), Ok(path)) => Ok(path),
         (Err(_), Err(_)) => which::which("bitcoind")
-            .map_err(|_| Error::NoBitcoindExecutableFound)
+            .map_err(|_| Error::NoBitcoindExecutableFound.into())
             .map(|p| p.display().to_string()),
     }
 }
 
 /// Validate the specified arg if there is any unavailable or deprecated one
-pub fn validate_args(args: Vec<&str>) -> Result<Vec<&str>, Error> {
+pub fn validate_args(args: Vec<&str>) -> anyhow::Result<Vec<&str>> {
     args.iter().try_for_each(|arg| {
         // other kind of invalid arguments can be added into the list if needed
         if INVALID_ARGS.iter().any(|x| arg.starts_with(x)) {
@@ -676,7 +678,10 @@ mod test {
         let bitcoind = BitcoinD::with_conf(exe, &conf);
 
         assert!(bitcoind.is_err());
-        assert!(matches!(bitcoind, Err(Error::RpcUserAndPasswordUsed)));
+        assert!(matches!(
+            bitcoind.unwrap_err().downcast_ref().unwrap(),
+            Error::RpcUserAndPasswordUsed
+        ));
     }
 
     #[test]
