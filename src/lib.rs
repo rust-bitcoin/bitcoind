@@ -14,6 +14,7 @@
 mod versions;
 
 use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
+use anyhow::Context;
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use log::{debug, error, warn};
 use std::ffi::OsStr;
@@ -297,7 +298,8 @@ impl BitcoinD {
             .args(&p2p_args)
             .args(&conf_args)
             .stdout(stdout)
-            .spawn()?;
+            .spawn()
+            .with_context(|| format!("Error while executing {:?}", exe.as_ref()))?;
 
         let node_url_default = format!("{}/wallet/default", rpc_url);
         let mut i = 0;
