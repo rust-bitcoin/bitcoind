@@ -1,6 +1,6 @@
 name: Test
 
-on: [pull_request]
+on: [pull_request, push]
 
 env:
   CARGO_TERM_COLOR: always
@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ "1.41.1", "stable", "nightly" ]
+        toolchain: [ "1.41.1", "1.45.2", "1.57.0", "stable", "nightly" ]
 
     steps:
       - uses: actions/checkout@v2
