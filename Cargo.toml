@@ -19,13 +19,10 @@ env_logger = "0.8"
 
 [build-dependencies]
 bitcoin_hashes = "0.11"
+flate2 = "1.0"
 tar = "0.4"
 zip = "0.5"
-
-# allows to keep MSRV 1.41.1
-ureq = "1.0"  
-filetime = "=0.2.15"
-flate2 = "=1.0.22"
+reqwest = { version = "0.10", features = ["blocking"] }
 
 [features]
 "23_0" = []
