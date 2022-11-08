@@ -23,7 +23,7 @@ bitcoin_hashes = "0.11"
 filetime = "0.2"
 flate2 = "1.0"
 tar = "0.4"
-ureq = "2.5.0"
+reqwest = { version = "0.10", features = ["blocking"] }
 zip = "0.6"
 time = "=0.3.10"  # otherwise rust 1.57 fails to select time "^0.3.7"
 

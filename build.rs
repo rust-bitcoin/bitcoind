@@ -1,7 +1,7 @@
 use bitcoin_hashes::{sha256, Hash};
 use flate2::read::GzDecoder;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Cursor, Read};
+use std::io::{self, BufRead, BufReader, Cursor};
 use std::path::Path;
 use std::str::FromStr;
 use tar::Archive;
@@ -103,13 +103,11 @@ fn main() {
         );
         println!("url:{}", url);
         let mut downloaded_bytes = Vec::new();
-        let resp = ureq::get(&url).call().unwrap();
+        let mut resp =
+            reqwest::blocking::get(&url).expect(&format!("fetched bitcoin core from {}", url));
         assert_eq!(resp.status(), 200, "url {} didn't return 200", url);
+        let _size = resp.copy_to(&mut downloaded_bytes).unwrap();
 
-        let _size = resp
-            .into_reader()
-            .read_to_end(&mut downloaded_bytes)
-            .unwrap();
         let downloaded_hash = sha256::Hash::hash(&downloaded_bytes);
         assert_eq!(expected_hash, downloaded_hash);
 
