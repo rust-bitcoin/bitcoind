@@ -283,7 +283,7 @@ impl BitcoinD {
             conf_args
         );
         let mut process = Command::new(exe.as_ref())
-            .args(&default_args)
+            .args(default_args)
             .args(&p2p_args)
             .args(&conf_args)
             .stdout(stdout)

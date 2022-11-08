@@ -103,8 +103,8 @@ fn main() {
         );
         println!("url:{}", url);
         let mut downloaded_bytes = Vec::new();
-        let mut resp =
-            reqwest::blocking::get(&url).expect(&format!("fetched bitcoin core from {}", url));
+        let mut resp = reqwest::blocking::get(&url)
+            .unwrap_or_else(|_| panic!("fetched bitcoin core from {}", url));
         assert_eq!(resp.status(), 200, "url {} didn't return 200", url);
         let _size = resp.copy_to(&mut downloaded_bytes).unwrap();
 
@@ -136,7 +136,7 @@ fn main() {
                     for d in outpath.iter() {
                         bitcoin_exe_home.push(d);
                     }
-                    std::fs::create_dir_all(&bitcoin_exe_home.parent().unwrap()).unwrap();
+                    std::fs::create_dir_all(bitcoin_exe_home.parent().unwrap()).unwrap();
                     println!("{:?}", bitcoin_exe_home);
                     let mut outfile = std::fs::File::create(&bitcoin_exe_home).unwrap();
                     io::copy(&mut file, &mut outfile).unwrap();
