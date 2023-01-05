@@ -295,7 +295,6 @@ impl BitcoinD {
             conf_args
         );
 
-        #[allow(clippy::needless_borrow)] // would break 1.41.1 if fixed
         let mut process = Command::new(exe.as_ref())
             .args(&default_args)
             .args(&p2p_args)
