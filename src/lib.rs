@@ -294,6 +294,8 @@ impl BitcoinD {
             p2p_args,
             conf_args
         );
+
+        #[allow(clippy::needless_borrow)] // would break 1.41.1 if fixed
         let mut process = Command::new(exe.as_ref())
             .args(&default_args)
             .args(&p2p_args)
@@ -436,9 +438,23 @@ impl From<bitcoincore_rpc::Error> for Error {
     }
 }
 
+const HAS_FEATURE: bool = cfg!(any(
+    feature = "23_0",
+    feature = "22_0",
+    feature = "0_21_1",
+    feature = "0_21_0",
+    feature = "0_20_1",
+    feature = "0_20_0",
+    feature = "0_19_1",
+    feature = "0_19_0_1",
+    feature = "0_18_1",
+    feature = "0_18_0",
+    feature = "0_17_1",
+));
+
 /// Provide the bitcoind executable path if a version feature has been specified
 pub fn downloaded_exe_path() -> anyhow::Result<String> {
-    if versions::HAS_FEATURE {
+    if HAS_FEATURE {
         let mut path: PathBuf = env!("OUT_DIR").into();
         path.push("bitcoin");
         path.push(format!("bitcoin-{}", versions::VERSION));
@@ -487,7 +503,7 @@ mod test {
     use crate::bitcoincore_rpc::jsonrpc::serde_json::Value;
     use crate::bitcoincore_rpc::{Auth, Client};
     use crate::exe_path;
-    use crate::{get_available_port, BitcoinD, Conf, Error, LOCAL_IP, P2P};
+    use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
     use std::net::SocketAddrV4;
     use tempfile::TempDir;
@@ -682,10 +698,6 @@ mod test {
         let bitcoind = BitcoinD::with_conf(exe, &conf);
 
         assert!(bitcoind.is_err());
-        assert!(matches!(
-            bitcoind.unwrap_err().downcast_ref().unwrap(),
-            Error::RpcUserAndPasswordUsed
-        ));
     }
 
     #[test]
