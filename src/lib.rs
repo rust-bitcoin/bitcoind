@@ -75,6 +75,20 @@ pub struct ConnectParams {
     pub p2p_socket: Option<SocketAddrV4>,
 }
 
+impl ConnectParams {
+    /// Parses the cookie file content
+    fn parse_cookie(content: String) -> anyhow::Result<(Option<String>, Option<String>)> {
+        let values: Vec<&str> = content.splitn(2, ':').collect();
+        Ok((Some(values[0].into()), Some(values[1].into())))
+    }
+
+    /// Return the user and password values from cookie file
+    pub fn get_cookie_values(&self) -> anyhow::Result<(Option<String>, Option<String>)> {
+        let cookie = std::fs::read_to_string(&self.cookie_file)?;
+        self::ConnectParams::parse_cookie(cookie)
+    }
+}
+
 /// Enum to specify p2p settings
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum P2P {
@@ -723,6 +737,27 @@ mod test {
         let _ = client.generate_to_address(1, &address).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(1, info.blocks);
+    }
+
+    #[test]
+    fn test_get_cookie_user_and_pass() {
+        let exe = init();
+        let bitcoind = BitcoinD::new(exe).unwrap();
+
+        let user: &str = "bitcoind_user";
+        let password: &str = "bitcoind_password";
+
+        std::fs::write(
+            &bitcoind.params.cookie_file,
+            format!("{}:{}", user, password),
+        )
+        .unwrap();
+
+        let result_values: (Option<String>, Option<String>) =
+            bitcoind.params.get_cookie_values().unwrap();
+
+        assert_eq!(user, result_values.0.unwrap().as_str());
+        assert_eq!(password, result_values.1.unwrap().as_str());
     }
 
     fn peers_connected(client: &Client) -> usize {
