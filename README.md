@@ -37,6 +37,8 @@ let bitcoind = bitcoind::BitcoinD::new(bitcoind::downloaded_exe_path().unwrap())
 
 The MSRV is 1.41.1 for version 0.29.* if no feature is used, otherwise is 1.57
 
+Note: to respect 1.41.1 MSRV you need to use and older version of the which dependency, like it's done in the CI `cargo update -p which@4.3.0`. Pinning in `Cargo.toml` is avoided because it could cause compilation issues downstream.
+
 ## Issues with traditional approach
 
 I used integration testing based on external bash script launching needed external processes, there are many issues with this approach like:
