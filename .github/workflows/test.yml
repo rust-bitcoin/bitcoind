@@ -85,4 +85,8 @@ jobs:
           override: true
       - uses: actions-rs/cargo@v1
         with:
+          command: update 
+          args: -p which --precise 4.3.0
+      - uses: actions-rs/cargo@v1
+        with:
           command: build
