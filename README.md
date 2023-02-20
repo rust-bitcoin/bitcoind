@@ -33,6 +33,8 @@ Then use it:
 let bitcoind = bitcoind::BitcoinD::new(bitcoind::downloaded_exe_path().unwrap()).unwrap();
 ```
 
+When the `BITCOIND_DOWNLOAD_ENDPOINT` environment variable is set, `bitcoind` will try to download the biniaries from the given endpoint. Otherwise it defaults to `https://bitcoincore.org/bin/`.
+
 ## MSRV
 
 The MSRV is 1.41.1 for version 0.29.* if no feature is used, otherwise is 1.57

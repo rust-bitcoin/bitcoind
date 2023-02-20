@@ -108,9 +108,12 @@ mod download {
                 download_filename, VERSION, expected_hash
             );
 
+            let download_endpoint = std::env::var("BITCOIND_DOWNLOAD_ENDPOINT")
+                .unwrap_or("https://bitcoincore.org/bin/".to_owned());
+
             let url = format!(
-                "https://bitcoincore.org/bin/bitcoin-core-{}/{}",
-                VERSION, download_filename
+                "{}/bitcoin-core-{}/{}",
+                download_endpoint, VERSION, download_filename
             );
             println!("url:{}", url);
             let mut downloaded_bytes = Vec::new();
