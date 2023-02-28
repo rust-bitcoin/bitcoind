@@ -33,7 +33,7 @@ Then use it:
 let bitcoind = bitcoind::BitcoinD::new(bitcoind::downloaded_exe_path().unwrap()).unwrap();
 ```
 
-When the `BITCOIND_DOWNLOAD_ENDPOINT` environment variable is set, `bitcoind` will try to download the biniaries from the given endpoint. Otherwise it defaults to `https://bitcoincore.org/bin/`.
+When the `BITCOIND_DOWNLOAD_ENDPOINT` environment variable is set, `bitcoind` will try to download the binaries from the given endpoint. Otherwise it defaults to `https://bitcoincore.org/bin/`.
 
 ## MSRV
 
