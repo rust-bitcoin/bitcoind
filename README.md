@@ -39,7 +39,7 @@ When the `BITCOIND_DOWNLOAD_ENDPOINT` environment variable is set, `bitcoind` wi
 
 The MSRV is 1.41.1 for version 0.29.* if no feature is used, otherwise is 1.57
 
-Note: to respect 1.41.1 MSRV you need to use and older version of the which dependency, like it's done in the CI `cargo update -p which@4.3.0`. Pinning in `Cargo.toml` is avoided because it could cause compilation issues downstream.
+Note: to respect 1.41.1 MSRV you need to use and older version of the which and tempfile dependencies, like it's done in the CI `cargo update -p which@4.3.0` and `cargo update -p tempfile@3.3.0`. Pinning in `Cargo.toml` is avoided because it could cause compilation issues downstream.
 
 ## Issues with traditional approach
 

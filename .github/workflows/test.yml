@@ -89,4 +89,8 @@ jobs:
           args: -p which --precise 4.3.0
       - uses: actions-rs/cargo@v1
         with:
+          command: update
+          args: -p tempfile --precise 3.3.0
+      - uses: actions-rs/cargo@v1
+        with:
           command: build
