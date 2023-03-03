@@ -117,7 +117,16 @@ mod download {
             );
             println!("url:{}", url);
             let mut downloaded_bytes = Vec::new();
-            let resp = ureq::get(&url).call().unwrap();
+
+            let http_proxy = std::env::var("HTTPS_PROXY").or_else(|_| std::env::var("HTTP_PROXY"));
+            let agent = if let Ok(proxy) = http_proxy {
+                let proxy = ureq::Proxy::new(proxy).unwrap();
+                ureq::AgentBuilder::new().proxy(proxy).build()
+            } else {
+                ureq::AgentBuilder::new().build()
+            };
+
+            let resp = agent.get(&url).call().unwrap();
             assert_eq!(resp.status(), 200, "url {} didn't return 200", url);
 
             let _size = resp
