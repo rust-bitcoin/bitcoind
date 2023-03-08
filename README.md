@@ -7,14 +7,14 @@ Utility to run a regtest bitcoind process, useful in integration testing environ
 
 ```rust
 use bitcoincore_rpc::RpcApi;
-let exe_path = exe_path().expect("bitcoind executable must be provided in BITCOIND_EXE, or with a feature like '22_0', or be in PATH");
+let exe_path = exe_path().expect("bitcoind executable must be provided in BITCOIND_EXE, or with a feature like '23_0', or be in PATH");
 let bitcoind = bitcoind::BitcoinD::new(exe_path).unwrap();
 assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 ```
 
 ## Automatic binaries download
 
-When a feature like `22_0` is selected, the build script will automatically download the bitcoin core version `22.0`, verify the hashes and place it in the build directory for this crate.
+When a feature like `23_0` is selected, the build script will automatically download the bitcoin core version `23.0`, verify the hashes and place it in the build directory for this crate.
 Use utility function `downloaded_exe_path()` to get the downloaded executable path.
 
 ### Example
@@ -24,7 +24,7 @@ In your project Cargo.toml, activate the following features
 ```toml
 
 [dev-dependencies]
-bitcoind = { version = "0.20.0", features = [ "22_0" ] }
+bitcoind = { version = "0.20.0", features = [ "23_0" ] }
 ```
 
 Then use it:
