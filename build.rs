@@ -15,7 +15,7 @@ mod download {
     use bitcoin_hashes::{sha256, Hash};
     use flate2::read::GzDecoder;
     use std::fs::File;
-    use std::io::{self, BufRead, BufReader, Cursor, Read};
+    use std::io::{self, BufRead, BufReader, Cursor};
     use std::path::Path;
     use std::str::FromStr;
     use tar::Archive;
@@ -116,14 +116,10 @@ mod download {
                 download_endpoint, VERSION, download_filename
             );
             println!("url:{}", url);
-            let mut downloaded_bytes = Vec::new();
-            let resp = ureq::get(&url).call().unwrap();
-            assert_eq!(resp.status(), 200, "url {} didn't return 200", url);
+            let resp = minreq::get(&url).send().unwrap();
+            assert_eq!(resp.status_code, 200, "url {} didn't return 200", url);
 
-            let _size = resp
-                .into_reader()
-                .read_to_end(&mut downloaded_bytes)
-                .unwrap();
+            let downloaded_bytes = resp.as_bytes();
             let downloaded_hash = sha256::Hash::hash(&downloaded_bytes);
             assert_eq!(expected_hash, downloaded_hash);
 
