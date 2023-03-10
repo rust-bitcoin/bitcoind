@@ -27,7 +27,10 @@ minreq = { version = "2.6.0", default-features = false, features = ["https"], op
 zip = { version = "0.6", optional = true }
 
 [features]
+
+# download is not supposed to be used directly only through selecting one of the version feature
 "download" = ["bitcoin_hashes", "flate2", "tar", "minreq", "zip"]
+
 "23_0" = ["download"]
 "22_0" = ["download"]
 "0_21_1" = ["download"]
@@ -39,3 +42,10 @@ zip = { version = "0.6", optional = true }
 "0_18_1" = ["download"]
 "0_18_0" = ["download"]
 "0_17_1" = ["download"]
+
+"doc" = [] # used only for documentation building
+
+
+[package.metadata.docs.rs]
+features = ["download", "doc"]
+rustdoc-args = ["--cfg", "docsrs"]

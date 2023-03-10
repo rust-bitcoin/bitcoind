@@ -1,10 +1,11 @@
+
 #[cfg(not(feature = "download"))]
 mod download {}
 
-#[cfg(not(feature = "download"))]
+#[cfg(any(not(feature = "download"), feature = "doc"))]
 fn main() {}
 
-#[cfg(feature = "download")]
+#[cfg(all(feature = "download", not(feature = "doc")))]
 fn main() {
     download::start();
 }

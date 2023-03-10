@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 #![deny(missing_docs)]
 
 //!
@@ -422,12 +424,13 @@ impl BitcoinD {
 }
 
 #[cfg(feature = "download")]
+#[cfg_attr(docsrs, doc(cfg(feature = "download")))]
 impl BitcoinD {
     /// create BitcoinD struct with the downloaded executable.
     pub fn from_downloaded() -> anyhow::Result<BitcoinD> {
         BitcoinD::new(downloaded_exe_path()?)
     }
-    /// create BitcoinD struct with the downloaded executable and given Conf
+    /// create BitcoinD struct with the downloaded executable and given Conf.
     pub fn from_downloaded_with_conf(conf: &Conf) -> anyhow::Result<BitcoinD> {
         BitcoinD::with_conf(downloaded_exe_path()?, conf)
     }
