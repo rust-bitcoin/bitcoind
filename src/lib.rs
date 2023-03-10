@@ -5,13 +5,29 @@
 //!
 //! Bitcoind
 //!
-//! Utility to run a regtest bitcoind process, useful in integration testing environment
+//! Utility to run a regtest bitcoind process, useful in integration testing environment.
 //!
-//! ```no_run
+//! When the auto-download feature is selected by activating one of the version feature, such as 
+//! `23_0` for bitcoin core 23.0, starting a regtest node is as simple as that:
+//! 
+//! ```ignore
 //! use bitcoincore_rpc::RpcApi;
-//! let bitcoind = bitcoind::BitcoinD::new("/usr/local/bin/bitcoind").unwrap();
+//! let bitcoind = bitcoind::BitcoinD::from_downloaded().unwrap();
 //! assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
 //! ```
+//! 
+//! When you don't use the auto-download feature you have the following options:
+//! * have bitcoind executable in the `PATH`
+//! * provide the bitcoind executable via the `BITCOIND_EXEC` env var
+//! 
+//! ```no_run
+//! let exe_path = bitcoind::exe_path().expect("bitcoind executable must be provided in BITCOIND_EXE, or with a feature like '23_0', or be in PATH");
+//! let bitcoind = bitcoind::BitcoinD::new(exe_path).unwrap();
+//! ```
+//! 
+//! Startup options could be configured via the [`Conf`] struct using [`BitcoinD::with_conf`] or
+//! [`BitcoinD::from_downloaded_with_conf`]
+//! 
 
 mod versions;
 
