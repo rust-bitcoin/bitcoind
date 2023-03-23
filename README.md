@@ -5,41 +5,68 @@
 
 Utility to run a regtest bitcoind process, useful in integration testing environment.
 
+When the auto-download feature is selected by activating one of the version feature, such as `23_0` 
+for bitcoin core 23.0, starting a regtest node is as simple as that:
+
+```rust
+// the download feature is enabled whenever a specific version is enabled, for example `23_0` or `22_0`
+#[cfg(feature = "download")]
+{
+  use bitcoincore_rpc::RpcApi;
+  let bitcoind = bitcoind::BitcoinD::from_downloaded().unwrap();
+  assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
+}
+```
+
+The build script will automatically download the bitcoin core version 23.0 from [bitcoin core](https://bitcoincore.org), 
+verify the hashes and place it in the build directory for this crate. If you wish to download from an 
+alternate location, for example locally for CI, use the `BITCOIND_DOWNLOAD_ENDPOINT` env var.
+
+When you don't use the auto-download feature you have the following options:
+
+* have `bitcoind` executable in the `PATH`
+* provide the `bitcoind` executable via the `BITCOIND_EXEC` env var
+
 ```rust
 use bitcoincore_rpc::RpcApi;
-let exe_path = exe_path().expect("bitcoind executable must be provided in BITCOIND_EXE, or with a feature like '23_0', or be in PATH");
-let bitcoind = bitcoind::BitcoinD::new(exe_path).unwrap();
-assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
+if let Ok(exe_path) = bitcoind::exe_path() {
+  let bitcoind = bitcoind::BitcoinD::new(exe_path).unwrap();
+  assert_eq!(0, bitcoind.client.get_blockchain_info().unwrap().blocks);
+}
 ```
 
-## Automatic binaries download
+Startup options could be configured via the [`Conf`] struct using [`BitcoinD::with_conf`] or 
+[`BitcoinD::from_downloaded_with_conf`]
 
-When a feature like `23_0` is selected, the build script will automatically download the bitcoin core version `23.0`, verify the hashes and place it in the build directory for this crate.
-Use utility function `downloaded_exe_path()` to get the downloaded executable path.
+## Issues with traditional approach
 
-### Example
+I used integration testing based on external bash script launching needed external processes, there 
+are many issues with this approach like:
 
-In your project Cargo.toml, activate the following features
+* External script may interfere with local development environment [1](https://github.com/rust-bitcoin/rust-bitcoincore-rpc/blob/200fc8247c1896709a673b82a89ca0da5e7aa2ce/integration_test/run.sh#L9)
+* Use of a single huge test to test everything [2](https://github.com/rust-bitcoin/rust-bitcoincore-rpc/blob/200fc8247c1896709a673b82a89ca0da5e7aa2ce/integration_test/src/main.rs#L122-L203)
+* If test are separated, a failing test may fail to leave a clean situation, causing other test to 
+fail (because of the initial situation, not a real failure)
+* bash script are hard, especially support different OS and versions
 
-```toml
+## Features
 
-[dev-dependencies]
-bitcoind = { version = "0.20.0", features = [ "23_0" ] }
-```
+  * It waits until bitcoind daemon become ready to accept RPC commands
+  * `bitcoind` use a temporary directory as datadir. You can specify the root of your temp directories 
+  so that you have node's datadir in a RAM disk (eg `/dev/shm`)
+  * Free ports are asked to the OS. Since you can't reserve the given portm a low probability race 
+  condition is still possible, for this reason the process is tried to be spawn 3 times with different
+  ports.
+  * The process is killed when the struct goes out of scope no matter how the test finishes
+  * Allows easy spawning of dependent process like [electrs](https://github.com/RCasatta/electrsd)
 
-Then use it:
-
-```rust
-let bitcoind = bitcoind::BitcoinD::new(bitcoind::downloaded_exe_path().unwrap()).unwrap();
-```
-
-When the `BITCOIND_DOWNLOAD_ENDPOINT` environment variable is set, `bitcoind` will try to download the binaries from the given endpoint. Otherwise it defaults to `https://bitcoincore.org/bin/`.
+Thanks to these features every `#[test]` could easily run isolated with its own environment.
 
 ## Doc
 
 To build docs:
 
-```
+```sh
 RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features download,doc --open
 ```
 
@@ -47,31 +74,17 @@ RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features download,doc --open
 
 The MSRV is 1.41.1 for version 0.29.* if no feature is used, otherwise is 1.57
 
-Note: to respect 1.41.1 MSRV you need to use and older version of the which and tempfile dependencies, like it's done in the CI `cargo update -p which --precise 4.3.0` and `cargo update -p tempfile --precise 3.3.0`. Pinning in `Cargo.toml` is avoided because it could cause compilation issues downstream.
+Note: to respect 1.41.1 MSRV you need to use and older version of the which and tempfile dependencies, 
+like it's done in the CI `cargo update -p which --precise 4.3.0` and 
+`cargo update -p tempfile --precise 3.3.0`. Pinning in `Cargo.toml` is avoided because it could cause 
+compilation issues downstream.
 
-## Issues with traditional approach
-
-I used integration testing based on external bash script launching needed external processes, there are many issues with this approach like:
-
-* External script may interfere with local development environment https://github.com/rust-bitcoin/rust-bitcoincore-rpc/blob/200fc8247c1896709a673b82a89ca0da5e7aa2ce/integration_test/run.sh#L9
-* Use of a single huge test to test everything https://github.com/rust-bitcoin/rust-bitcoincore-rpc/blob/200fc8247c1896709a673b82a89ca0da5e7aa2ce/integration_test/src/main.rs#L122-L203
-* If test are separated, a failing test may fail to leave a clean situation, causing other test to fail (because of the initial situation, not a real failure)
-* bash script are hard, especially support different OS and versions
-
-## Features
-
-  * It waits until bitcoind daemon become ready to accept RPC commands
-  * bitcoind use a temporary directory as datadir. You can specify the root of your temp directories so that you have node's datadir in a RAM disk (eg `/dev/shm`)
-  * Free ports are asked to the OS (a low probability race condition is still possible)
-  * the process is killed when the struct goes out of scope no matter how the test finishes
-  * allows easy spawning of dependent process like https://github.com/RCasatta/electrsd
-
-Thanks to these features every `#[test]` could easily run isolated with its own environment.
 
 ## Used by
 
 * [firma](https://github.com/RCasatta/firma/)
 * [payjoin](https://github.com/Kixunil/payjoin)
+* [rust-miniscript](https://github.com/rust-bitcoin/rust-miniscript/tree/4a3ba11c2fd5063be960741d557f3f7a28041e1f/bitcoind-tests)
 
 ### Via bdk dependency
 

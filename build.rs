@@ -1,4 +1,3 @@
-
 #[cfg(not(feature = "download"))]
 mod download {}
 
@@ -10,7 +9,7 @@ fn main() {
     download::start();
 }
 
-#[cfg(feature = "download")]
+#[cfg(all(feature = "download", not(feature = "doc")))]
 mod download {
 
     use bitcoin_hashes::{sha256, Hash};
