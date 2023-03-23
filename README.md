@@ -1,5 +1,6 @@
 [![MIT license](https://img.shields.io/github/license/RCasatta/bitcoind)](https://github.com/RCasatta/bitcoind/blob/master/LICENSE)
 [![Crates](https://img.shields.io/crates/v/bitcoind.svg)](https://crates.io/crates/bitcoind)
+[![Docs](https://img.shields.io/badge/docs.rs-bitcoind-green)](https://docs.rs/bitcoind)
 
 # Bitcoind
 
@@ -75,8 +76,15 @@ RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features download,doc --open
 The MSRV is 1.41.1 for version 0.29.* if no feature is used, otherwise is 1.57
 
 Note: to respect 1.41.1 MSRV you need to use and older version of the which and tempfile dependencies, 
-like it's done in the CI `cargo update -p which --precise 4.3.0` and 
-`cargo update -p tempfile --precise 3.3.0`. Pinning in `Cargo.toml` is avoided because it could cause 
+like it's done in the CI:
+
+```sh
+cargo update -p which --precise 4.3.0
+cargo update -p serde --precise 1.0.152
+cargo update -p tempfile --precise 3.3.0
+```
+
+Pinning in `Cargo.toml` is avoided because it could cause
 compilation issues downstream.
 
 

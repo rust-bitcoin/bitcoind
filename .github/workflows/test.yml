@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: Swatinem/rust-cache@v1.2.0
         with:
-          key: ${{ matrix.version }}
+          key: ${{ matrix.version }}1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
@@ -91,6 +91,10 @@ jobs:
         with:
           command: update
           args: -p tempfile --precise 3.3.0
+      - uses: actions-rs/cargo@v1
+        with:
+          command: update
+          args: -p serde --precise 1.0.152
       - uses: actions-rs/cargo@v1
         with:
           command: build
