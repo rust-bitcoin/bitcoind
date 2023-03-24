@@ -1,9 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![deny(missing_docs)]
-
-//! See [Readme](https://github.com/RCasatta/bitcoind/blob/master/README.md)
-//!
-//! when MSRV will reach 1.54 `#![doc = include_str!("../README.md")]`
+#![cfg_attr(feature = "doc", cfg_attr(all(), doc = include_str!("../README.md")))]
 
 mod versions;
 
