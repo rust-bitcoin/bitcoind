@@ -62,17 +62,7 @@ mod download {
 
     fn get_expected_sha256(filename: &str) -> sha256::Hash {
         let sha256sums_filename = format!("sha256/bitcoin-core-{}-SHA256SUMS", &VERSION);
-        #[cfg(any(
-            feature = "0_21_1",
-            feature = "0_21_0",
-            feature = "0_20_1",
-            feature = "0_20_0",
-            feature = "0_19_1",
-            feature = "0_19_0_1",
-            feature = "0_18_1",
-            feature = "0_18_0",
-            feature = "0_17_1",
-        ))]
+        #[cfg(not(feature = "22_0"))]
         let sha256sums_filename = format!("{}.asc", sha256sums_filename);
         let file = File::open(&sha256sums_filename).unwrap();
         for line in BufReader::new(file).lines().flatten() {
