@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(feature = "doc", cfg_attr(all(), doc = include_str!("../README.md")))]
 
 mod versions;
@@ -538,7 +538,11 @@ mod test {
         let bitcoind = BitcoinD::new(exe).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(0, info.blocks);
-        let address = bitcoind.client.get_new_address(None, None).unwrap();
+        let address = bitcoind
+            .client
+            .get_new_address(None, None)
+            .unwrap()
+            .assume_checked();
         let _ = bitcoind.client.generate_to_address(1, &address).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(1, info.blocks);
@@ -588,7 +592,11 @@ mod test {
         // Generate 101 blocks
         // Wallet balance should be 50
         let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
-        let core_addrs = bitcoind.client.get_new_address(None, None).unwrap();
+        let core_addrs = bitcoind
+            .client
+            .get_new_address(None, None)
+            .unwrap()
+            .assume_checked();
         bitcoind
             .client
             .generate_to_address(101, &core_addrs)
@@ -646,9 +654,9 @@ mod test {
         let exe = init();
         let bitcoind = BitcoinD::new(exe).unwrap();
         let alice = bitcoind.create_wallet("alice").unwrap();
-        let alice_address = alice.get_new_address(None, None).unwrap();
+        let alice_address = alice.get_new_address(None, None).unwrap().assume_checked();
         let bob = bitcoind.create_wallet("bob").unwrap();
-        let bob_address = bob.get_new_address(None, None).unwrap();
+        let bob_address = bob.get_new_address(None, None).unwrap().assume_checked();
         bitcoind
             .client
             .generate_to_address(1, &alice_address)
@@ -736,7 +744,7 @@ mod test {
         let info = client.get_blockchain_info().unwrap();
         assert_eq!(0, info.blocks);
 
-        let address = client.get_new_address(None, None).unwrap();
+        let address = client.get_new_address(None, None).unwrap().assume_checked();
         let _ = client.generate_to_address(1, &address).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(1, info.blocks);
