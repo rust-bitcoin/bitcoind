@@ -370,7 +370,7 @@ impl BitcoinD {
         format!("http://{}", self.params.rpc_socket)
     }
 
-    #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
+    #[cfg(any(feature = "0_19_0_1", not(feature = "download")))]
     /// Returns the rpc URL including the schema and the given `wallet_name`
     /// eg. http://127.0.0.1:44842/wallet/my_wallet
     pub fn rpc_url_with_wallet<T: AsRef<str>>(&self, wallet_name: T) -> String {
@@ -397,7 +397,7 @@ impl BitcoinD {
         Ok(self.process.wait()?)
     }
 
-    #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
+    #[cfg(any(feature = "0_19_0_1", not(feature = "download")))]
     /// Create a new wallet in the running node, and return an RPC client connected to the just
     /// created wallet
     pub fn create_wallet<T: AsRef<str>>(&self, wallet: T) -> anyhow::Result<Client> {
@@ -545,7 +545,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(any(feature = "0_21_0", feature = "0_21_1"))]
+    #[cfg(feature = "0_21_0")]
     fn test_getindexinfo() {
         let exe = init();
         let mut conf = Conf::default();
@@ -639,7 +639,7 @@ mod test {
         assert_eq!(node3_peers, 1, "listen false but more than 1 peer");
     }
 
-    #[cfg(not(any(feature = "0_17_1", feature = "0_18_0", feature = "0_18_1")))]
+    #[cfg(any(feature = "0_19_0_1", not(feature = "download")))]
     #[test]
     fn test_multi_wallet() {
         use bitcoincore_rpc::bitcoin::Amount;
