@@ -33,6 +33,3 @@ pub const VERSION: &str = "0.18.0";
 
 #[cfg(all(feature = "0_17_1", not(feature = "0_18_0")))]
 pub const VERSION: &str = "0.17.1";
-
-#[cfg(not(feature = "0_17_1"))]
-pub const VERSION: &str = "N/A";

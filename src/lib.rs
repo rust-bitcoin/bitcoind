@@ -454,39 +454,27 @@ impl From<bitcoincore_rpc::Error> for Error {
     }
 }
 
-const HAS_FEATURE: bool = cfg!(any(
-    feature = "24_0_1",
-    feature = "23_0",
-    feature = "22_0",
-    feature = "0_21_1",
-    feature = "0_21_0",
-    feature = "0_20_1",
-    feature = "0_20_0",
-    feature = "0_19_1",
-    feature = "0_19_0_1",
-    feature = "0_18_1",
-    feature = "0_18_0",
-    feature = "0_17_1",
-));
+/// Provide the bitcoind executable path if a version feature has been specified
+#[cfg(not(feature = "download"))]
+pub fn downloaded_exe_path() -> anyhow::Result<String> {
+    Err(Error::NoFeature.into())
+}
 
 /// Provide the bitcoind executable path if a version feature has been specified
+#[cfg(feature = "download")]
 pub fn downloaded_exe_path() -> anyhow::Result<String> {
-    if HAS_FEATURE {
-        let mut path: PathBuf = env!("OUT_DIR").into();
-        path.push("bitcoin");
-        path.push(format!("bitcoin-{}", versions::VERSION));
-        path.push("bin");
+    let mut path: PathBuf = env!("OUT_DIR").into();
+    path.push("bitcoin");
+    path.push(format!("bitcoin-{}", versions::VERSION));
+    path.push("bin");
 
-        if cfg!(target_os = "windows") {
-            path.push("bitcoind.exe");
-        } else {
-            path.push("bitcoind");
-        }
-
-        Ok(format!("{}", path.display()))
+    if cfg!(target_os = "windows") {
+        path.push("bitcoind.exe");
     } else {
-        Err(Error::NoFeature.into())
+        path.push("bitcoind");
     }
+
+    Ok(format!("{}", path.display()))
 }
 
 /// Returns the daemon executable path if it's provided as a feature or as `BITCOIND_EXE` env var.
