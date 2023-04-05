@@ -27,18 +27,7 @@ mod download {
         any(target_arch = "x86_64", target_arch = "aarch64"),
     ))]
     fn download_filename() -> String {
-        if cfg!(any(
-            feature = "22_0",
-            feature = "0_21_1",
-            feature = "0_21_0",
-            feature = "0_20_1",
-            feature = "0_20_0",
-            feature = "0_19_1",
-            feature = "0_19_0_1",
-            feature = "0_18_1",
-            feature = "0_18_0",
-            feature = "0_17_1",
-        )) {
+        if cfg!(not(feature = "23_0")) {
             format!("bitcoin-{}-osx64.tar.gz", &VERSION)
         } else {
             format!("bitcoin-{}-x86_64-apple-darwin.tar.gz", &VERSION)
