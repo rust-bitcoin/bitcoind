@@ -455,6 +455,7 @@ impl From<bitcoincore_rpc::Error> for Error {
 }
 
 const HAS_FEATURE: bool = cfg!(any(
+    feature = "24_0_1",
     feature = "23_0",
     feature = "22_0",
     feature = "0_21_1",
