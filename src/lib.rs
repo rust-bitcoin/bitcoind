@@ -105,8 +105,6 @@ pub enum Error {
     /// Returned when calling methods requiring the bitcoind executable but none is found
     /// (no feature, no `BITCOIND_EXE`, no `bitcoind` in `PATH` )
     NoBitcoindExecutableFound,
-    /// Returned when calling methods requiring either a feature or anv var, but both are present
-    BothFeatureAndEnvVar,
     /// Wrapper of early exit status
     EarlyExit(ExitStatus),
     /// Returned when both tmpdir and staticdir is specified in `Conf` options
@@ -124,7 +122,6 @@ impl fmt::Debug for Error {
             Error::NoFeature => write!(f, "Called a method requiring a feature to be set, but it's not"),
             Error::NoEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` to be set, but it's not"),
             Error::NoBitcoindExecutableFound =>  write!(f, "`bitcoind` executable is required, provide it with one of the following: set env var `BITCOIND_EXE` or use a feature like \"22_0\" or have `bitcoind` executable in the `PATH`"),
-            Error::BothFeatureAndEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` or a feature to be set, but both are set"),
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
             Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options"),
             Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication")
@@ -477,17 +474,22 @@ pub fn downloaded_exe_path() -> anyhow::Result<String> {
     Ok(format!("{}", path.display()))
 }
 
-/// Returns the daemon executable path if it's provided as a feature or as `BITCOIND_EXE` env var.
-/// Returns error if none or both are set
+/// Returns the daemon `bitcoind` executable with the following precedence:
+///
+/// 1) If it's specified in the `BITCOIND_EXE` env var
+/// 2) If there is no env var but an auto-download feature such as `23_0` is enabled, returns the
+/// path of the downloaded executabled
+/// 3) If neither of the precedent are available, the `bitcoind` executable is searched in the `PATH`
 pub fn exe_path() -> anyhow::Result<String> {
-    match (downloaded_exe_path(), std::env::var("BITCOIND_EXE")) {
-        (Ok(_), Ok(_)) => Err(Error::BothFeatureAndEnvVar.into()),
-        (Ok(path), Err(_)) => Ok(path),
-        (Err(_), Ok(path)) => Ok(path),
-        (Err(_), Err(_)) => which::which("bitcoind")
-            .map_err(|_| Error::NoBitcoindExecutableFound.into())
-            .map(|p| p.display().to_string()),
+    if let Ok(path) = std::env::var("BITCOIND_EXE") {
+        return Ok(path);
     }
+    if let Ok(path) = downloaded_exe_path() {
+        return Ok(path);
+    }
+    which::which("bitcoind")
+        .map_err(|_| Error::NoBitcoindExecutableFound.into())
+        .map(|p| p.display().to_string())
 }
 
 /// Validate the specified arg if there is any unavailable or deprecated one
