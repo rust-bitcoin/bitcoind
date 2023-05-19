@@ -14,8 +14,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04 ]
-        feature: [ "24_0_1", "23_0", "22_0", "0_21_1", "0_21_0", "0_20_1", "0_20_0", "0_19_1", "0_19_0_1", "0_18_1", "0_18_0", "0_17_1"]
+        os: [ubuntu-20.04]
+        feature: ["24_0_1", "23_0", "22_0", "0_21_1", "0_21_0", "0_20_1",
+                  "0_20_0", "0_19_1", "0_19_0_1", "0_18_1", "0_18_0", "0_17_1"]
         include:
           - os: "macos-11"
             feature: "0_21_1"
@@ -28,73 +29,46 @@ jobs:
 
     steps:
       - run: df -h
-      - uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1.2.0
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.feature }}${{ matrix.os }}
-        if: ${{ matrix.os != 'macos-11' }} # issue with hard-links on mac
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      #- run: echo "TEMPDIR_ROOT=/dev/shm" >> $GITHUB_ENV # conflicts with test `test_data_persistence`
-      #  if: ${{ matrix.os != 'macos-11' }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features ${{ matrix.feature }}
+        if: ${{ matrix.os != 'macos-11' }}  # issue with hard-links on mac
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --features ${{ matrix.feature }}
       - run: echo "BITCOIND_EXE=$(find ./target/debug -name bitcoind)" >> $GITHUB_ENV
         if: ${{ matrix.os != 'windows-2019' }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-        if: ${{ matrix.feature != '0_18_1' &&  matrix.feature != '0_18_0' && matrix.feature != '0_17_1' && matrix.os != 'windows-2019' }} # would fail `test_multi_wallet`
+      - run: cargo test
+        if: ${{ matrix.feature != '0_18_1' &&  matrix.feature != '0_18_0' && matrix.feature != '0_17_1' && matrix.os != 'windows-2019' }}  # would fail `test_multi_wallet`
 
 
   cosmetics:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1.2.0
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-          profile: minimal
           components: rustfmt, clippy
-      - name: fmt
-        run: cargo fmt -- --check
-      - name: clippy
-        run: cargo clippy -- -D warnings
+      - run: cargo fmt -- --check
+      - run: cargo clippy -- -D warnings
 
   rust-version:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ "1.41.1", "stable", "nightly" ]
+        toolchain: ["1.41.1", "stable", "nightly"]
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: Swatinem/rust-cache@v1.2.0
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.version }}1
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: update 
-          args: -p which --precise 4.3.0
-      - uses: actions-rs/cargo@v1
-        with:
-          command: update
-          args: -p tempfile --precise 3.3.0
-      - uses: actions-rs/cargo@v1
-        with:
-          command: update
-          args: -p serde --precise 1.0.152
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
+      - run: cargo update -p which --precise 4.3.0
+      - run: cargo update -p tempfile --precise 3.3.0
+      - run: cargo update -p serde --precise 1.0.152
+      - run: cargo build
