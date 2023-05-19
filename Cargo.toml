@@ -31,17 +31,13 @@ zip = { version = "0.5", optional = true }
 # download is not supposed to be used directly only through selecting one of the version feature
 "download" = ["bitcoin_hashes", "flate2", "tar", "minreq", "zip"]
 
-"24_0_1" = ["download", "23_0"]
-"23_0" = ["download", "22_0"]
-"22_0" = ["download", "0_21_1"]
-"0_21_1" = ["download", "0_21_0"]
-"0_21_0" = ["download", "0_20_1"]
-"0_20_1" = ["download", "0_20_0"]
-"0_20_0" = ["download", "0_19_1"]
-"0_19_1" = ["download", "0_19_0_1"]
-"0_19_0_1" = ["download", "0_18_1"]
-"0_18_1" = ["download", "0_18_0"]
-"0_18_0" = ["download", "0_17_1"]
+"24_0_1" = ["download", "23_1"]
+"23_1" = ["download", "22_1"]
+"22_1" = ["download", "0_21_2"]
+"0_21_2" = ["download", "0_20_2"]
+"0_20_2" = ["download", "0_19_1"]
+"0_19_1" = ["download", "0_18_1"]
+"0_18_1" = ["download", "0_17_1"]
 "0_17_1" = ["download"]
 
 "doc" = [] # used only for documentation building

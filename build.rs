@@ -27,7 +27,7 @@ mod download {
         any(target_arch = "x86_64", target_arch = "aarch64"),
     ))]
     fn download_filename() -> String {
-        if cfg!(not(feature = "23_0")) {
+        if cfg!(not(feature = "23_1")) {
             format!("bitcoin-{}-osx64.tar.gz", &VERSION)
         } else {
             format!("bitcoin-{}-x86_64-apple-darwin.tar.gz", &VERSION)
@@ -51,7 +51,7 @@ mod download {
 
     fn get_expected_sha256(filename: &str) -> sha256::Hash {
         let sha256sums_filename = format!("sha256/bitcoin-core-{}-SHA256SUMS", &VERSION);
-        #[cfg(not(feature = "22_0"))]
+        #[cfg(not(feature = "22_1"))]
         let sha256sums_filename = format!("{}.asc", sha256sums_filename);
         let file = File::open(&sha256sums_filename).unwrap();
         for line in BufReader::new(file).lines().flatten() {

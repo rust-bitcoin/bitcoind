@@ -121,7 +121,7 @@ impl fmt::Debug for Error {
             Error::Rpc(_) => write!(f, "bitcoin_rpc::Error"),
             Error::NoFeature => write!(f, "Called a method requiring a feature to be set, but it's not"),
             Error::NoEnvVar => write!(f, "Called a method requiring env var `BITCOIND_EXE` to be set, but it's not"),
-            Error::NoBitcoindExecutableFound =>  write!(f, "`bitcoind` executable is required, provide it with one of the following: set env var `BITCOIND_EXE` or use a feature like \"22_0\" or have `bitcoind` executable in the `PATH`"),
+            Error::NoBitcoindExecutableFound =>  write!(f, "`bitcoind` executable is required, provide it with one of the following: set env var `BITCOIND_EXE` or use a feature like \"22_1\" or have `bitcoind` executable in the `PATH`"),
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
             Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options"),
             Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication")
@@ -367,7 +367,7 @@ impl BitcoinD {
         format!("http://{}", self.params.rpc_socket)
     }
 
-    #[cfg(any(feature = "0_19_0_1", not(feature = "download")))]
+    #[cfg(any(feature = "0_19_1", not(feature = "download")))]
     /// Returns the rpc URL including the schema and the given `wallet_name`
     /// eg. http://127.0.0.1:44842/wallet/my_wallet
     pub fn rpc_url_with_wallet<T: AsRef<str>>(&self, wallet_name: T) -> String {
@@ -394,7 +394,7 @@ impl BitcoinD {
         Ok(self.process.wait()?)
     }
 
-    #[cfg(any(feature = "0_19_0_1", not(feature = "download")))]
+    #[cfg(any(feature = "0_19_1", not(feature = "download")))]
     /// Create a new wallet in the running node, and return an RPC client connected to the just
     /// created wallet
     pub fn create_wallet<T: AsRef<str>>(&self, wallet: T) -> anyhow::Result<Client> {
@@ -477,7 +477,7 @@ pub fn downloaded_exe_path() -> anyhow::Result<String> {
 /// Returns the daemon `bitcoind` executable with the following precedence:
 ///
 /// 1) If it's specified in the `BITCOIND_EXE` env var
-/// 2) If there is no env var but an auto-download feature such as `23_0` is enabled, returns the
+/// 2) If there is no env var but an auto-download feature such as `23_1` is enabled, returns the
 /// path of the downloaded executabled
 /// 3) If neither of the precedent are available, the `bitcoind` executable is searched in the `PATH`
 pub fn exe_path() -> anyhow::Result<String> {
@@ -540,7 +540,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "0_21_0")]
+    #[cfg(feature = "0_21_2")]
     fn test_getindexinfo() {
         let exe = init();
         let mut conf = Conf::default();
@@ -638,7 +638,7 @@ mod test {
         assert_eq!(node3_peers, 1, "listen false but more than 1 peer");
     }
 
-    #[cfg(any(feature = "0_19_0_1", not(feature = "download")))]
+    #[cfg(any(feature = "0_19_1", not(feature = "download")))]
     #[test]
     fn test_multi_wallet() {
         use bitcoincore_rpc::bitcoin::Amount;
