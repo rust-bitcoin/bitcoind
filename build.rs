@@ -16,7 +16,7 @@ mod download {
     use bitcoin_hashes::{sha256, Hash};
     use flate2::read::GzDecoder;
     use std::fs::File;
-    use std::io::{self, BufRead, BufReader, Cursor};
+    use std::io::{self, BufRead, BufReader, Cursor, Read};
     use std::path::Path;
     use std::str::FromStr;
     use tar::Archive;
@@ -91,24 +91,45 @@ mod download {
                 download_filename, VERSION, expected_hash
             );
 
-            let download_endpoint = std::env::var("BITCOIND_DOWNLOAD_ENDPOINT")
-                .unwrap_or("https://bitcoincore.org/bin/".to_owned());
+            let (file_or_url, tarball_bytes) = match std::env::var("BITCOIND_TARBALL_FILE") {
+                Err(_) => {
+                    let download_endpoint = std::env::var("BITCOIND_DOWNLOAD_ENDPOINT")
+                        .unwrap_or("https://bitcoincore.org/bin/".to_owned());
 
-            let url = format!(
-                "{}/bitcoin-core-{}/{}",
-                download_endpoint, VERSION, download_filename
+                    let url = format!(
+                        "{}/bitcoin-core-{}/{}",
+                        download_endpoint, VERSION, download_filename
+                    );
+                    let resp = minreq::get(&url)
+                        .send()
+                        .with_context(|| format!("cannot reach url {}", url))?;
+                    assert_eq!(resp.status_code, 200, "url {} didn't return 200", url);
+
+                    (url, resp.as_bytes().to_vec())
+                }
+                Ok(path) => {
+                    let f = File::open(&path).with_context(|| {
+                        format!(
+                            "Cannot find {:?} specified with env var BITCOIND_TARBALL_FILE",
+                            &path
+                        )
+                    })?;
+                    let mut reader = BufReader::new(f);
+                    let mut buffer = Vec::new();
+                    reader.read_to_end(&mut buffer)?;
+                    (path, buffer)
+                }
+            };
+
+            let tarball_hash = sha256::Hash::hash(&tarball_bytes);
+            assert_eq!(
+                expected_hash, tarball_hash,
+                "expected hash of {} is not matching",
+                file_or_url
             );
-            let resp = minreq::get(&url)
-                .send()
-                .with_context(|| format!("cannot reach url {}", url))?;
-            assert_eq!(resp.status_code, 200, "url {} didn't return 200", url);
-
-            let downloaded_bytes = resp.as_bytes();
-            let downloaded_hash = sha256::Hash::hash(&downloaded_bytes);
-            assert_eq!(expected_hash, downloaded_hash);
 
             if download_filename.ends_with(".tar.gz") {
-                let d = GzDecoder::new(&downloaded_bytes[..]);
+                let d = GzDecoder::new(&tarball_bytes[..]);
 
                 let mut archive = Archive::new(d);
                 for mut entry in archive.entries().unwrap().flatten() {
@@ -119,7 +140,7 @@ mod download {
                     }
                 }
             } else if download_filename.ends_with(".zip") {
-                let cursor = Cursor::new(downloaded_bytes);
+                let cursor = Cursor::new(tarball_bytes);
                 let mut archive = zip::ZipArchive::new(cursor).unwrap();
                 for i in 0..zip::ZipArchive::len(&archive) {
                     let mut file = archive.by_index(i).unwrap();
