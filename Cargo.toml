@@ -25,6 +25,7 @@ flate2 = { version = "1.0", optional = true }
 tar = { version = "0.4", optional = true } 
 minreq = { version = "2.6.0", default-features = false, features = ["https"], optional = true }
 zip = { version = "0.5", optional = true }
+anyhow = "1.0.66"
 
 [features]
 

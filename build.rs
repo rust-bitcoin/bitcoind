@@ -6,12 +6,13 @@ fn main() {}
 
 #[cfg(all(feature = "download", not(feature = "doc")))]
 fn main() {
-    download::start();
+    download::start().unwrap();
 }
 
 #[cfg(all(feature = "download", not(feature = "doc")))]
 mod download {
 
+    use anyhow::Context;
     use bitcoin_hashes::{sha256, Hash};
     use flate2::read::GzDecoder;
     use std::fs::File;
@@ -49,15 +50,16 @@ mod download {
         format!("bitcoin-{}-win64.zip", &VERSION)
     }
 
-    fn get_expected_sha256(filename: &str) -> sha256::Hash {
+    fn get_expected_sha256(filename: &str) -> anyhow::Result<sha256::Hash> {
         let sha256sums_filename = format!("sha256/bitcoin-core-{}-SHA256SUMS", &VERSION);
         #[cfg(not(feature = "22_1"))]
         let sha256sums_filename = format!("{}.asc", sha256sums_filename);
-        let file = File::open(&sha256sums_filename).unwrap();
+        let file = File::open(&sha256sums_filename)
+            .with_context(|| format!("cannot find {:?}", sha256sums_filename))?;
         for line in BufReader::new(file).lines().flatten() {
             let tokens: Vec<_> = line.split("  ").collect();
             if tokens.len() == 2 && filename == tokens[1] {
-                return sha256::Hash::from_str(tokens[0]).unwrap();
+                return Ok(sha256::Hash::from_str(tokens[0]).unwrap());
             }
         }
         panic!(
@@ -68,13 +70,15 @@ mod download {
         );
     }
 
-    pub(crate) fn start() {
+    pub(crate) fn start() -> anyhow::Result<()> {
         let download_filename = download_filename();
-        let expected_hash = get_expected_sha256(&download_filename);
+        let expected_hash = get_expected_sha256(&download_filename)?;
         let out_dir = std::env::var_os("OUT_DIR").unwrap();
+
         let mut bitcoin_exe_home = Path::new(&out_dir).join("bitcoin");
         if !bitcoin_exe_home.exists() {
-            std::fs::create_dir(&bitcoin_exe_home).unwrap();
+            std::fs::create_dir(&bitcoin_exe_home)
+                .with_context(|| format!("cannot create dir {:?}", bitcoin_exe_home))?;
         }
         let existing_filename = bitcoin_exe_home
             .join(format!("bitcoin-{}", VERSION))
@@ -94,8 +98,9 @@ mod download {
                 "{}/bitcoin-core-{}/{}",
                 download_endpoint, VERSION, download_filename
             );
-            println!("url:{}", url);
-            let resp = minreq::get(&url).send().unwrap();
+            let resp = minreq::get(&url)
+                .send()
+                .with_context(|| format!("cannot reach url {}", url))?;
             assert_eq!(resp.status_code, 200, "url {} didn't return 200", url);
 
             let downloaded_bytes = resp.as_bytes();
@@ -127,14 +132,19 @@ mod download {
                         for d in outpath.iter() {
                             bitcoin_exe_home.push(d);
                         }
-                        std::fs::create_dir_all(&bitcoin_exe_home.parent().unwrap()).unwrap();
-                        println!("{:?}", bitcoin_exe_home);
-                        let mut outfile = std::fs::File::create(&bitcoin_exe_home).unwrap();
+                        let parent = bitcoin_exe_home.parent().unwrap();
+                        std::fs::create_dir_all(&parent)
+                            .with_context(|| format!("cannot create dir {:?}", parent))?;
+                        let mut outfile =
+                            std::fs::File::create(&bitcoin_exe_home).with_context(|| {
+                                format!("cannot create file {:?}", bitcoin_exe_home)
+                            })?;
                         io::copy(&mut file, &mut outfile).unwrap();
                         break;
                     }
                 }
             }
         }
+        Ok(())
     }
 }
