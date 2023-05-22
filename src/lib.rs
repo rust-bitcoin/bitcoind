@@ -409,7 +409,6 @@ impl BitcoinD {
 }
 
 #[cfg(feature = "download")]
-#[cfg_attr(docsrs, doc(cfg(feature = "download")))]
 impl BitcoinD {
     /// create BitcoinD struct with the downloaded executable.
     pub fn from_downloaded() -> anyhow::Result<BitcoinD> {
