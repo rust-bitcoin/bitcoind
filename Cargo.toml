@@ -8,6 +8,7 @@ repository = "https://github.com/RCasatta/bitcoind"
 documentation = "https://docs.rs/bitcoind/"
 rust-version = "1.41.1"  # without features, with any feature is 1.57
 edition = "2018"
+categories = ["cryptography::cryptocurrencies", "development-tools::testing"]
 
 [dependencies]
 bitcoincore-rpc = { package="core-rpc", version = "0.17.0" }
