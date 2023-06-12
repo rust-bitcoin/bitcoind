@@ -33,6 +33,7 @@ anyhow = "1.0.66"
 # download is not supposed to be used directly only through selecting one of the version feature
 "download" = ["bitcoin_hashes", "flate2", "tar", "minreq", "zip"]
 
+"25_0" = ["download", "24_0_1"]
 "24_0_1" = ["download", "23_1"]
 "23_1" = ["download", "22_1"]
 "22_1" = ["download", "0_21_2"]

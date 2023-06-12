@@ -19,13 +19,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04]
-        feature: ["24_0_1", "23_1", "22_1", "0_21_2", "0_20_2", "0_19_1",
-                  "0_18_1", "0_17_1"]
+        feature: ["25_0", "24_0_1", "23_1", "22_1", "0_21_2", "0_20_2",
+                  "0_19_1", "0_18_1", "0_17_1"]
         include:
           - os: "macos-11"
-            feature: "24_0_1"
+            feature: "25_0"
           - os: "windows-2019"
-            feature: "24_0_1"
+            feature: "25_0"
 
     steps:
       - run: df -h

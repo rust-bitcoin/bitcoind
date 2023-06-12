@@ -1,4 +1,7 @@
-#[cfg(feature = "24_0_1")]
+#[cfg(feature = "25_0")]
+pub const VERSION: &str = "25.0";
+
+#[cfg(all(feature = "24_0_1", not(feature = "25_0")))]
 pub const VERSION: &str = "24.0.1";
 
 #[cfg(all(feature = "23_1", not(feature = "24_0_1")))]
