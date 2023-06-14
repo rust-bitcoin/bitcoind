@@ -73,15 +73,14 @@ RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features download,doc --open
 
 ## MSRV
 
-The MSRV is 1.41.1 for version 0.29.* if no feature is used, otherwise is 1.57
+The MSRV is 1.48.0 for version 0.29.* if no feature is used, otherwise is 1.57
 
-Note: to respect 1.41.1 MSRV you need to use and older version of the which and tempfile dependencies, 
+Note: to respect 1.48.0 MSRV you need to use and older version of the which and tempfile dependencies, 
 like it's done in the CI:
 
 ```sh
-cargo update -p which --precise 4.3.0
 cargo update -p serde --precise 1.0.152
-cargo update -p tempfile --precise 3.3.0
+cargo update -p log --precise 0.4.18
 ```
 
 Pinning in `Cargo.toml` is avoided because it could cause
@@ -89,9 +88,11 @@ compilation issues downstream.
 
 ## Nix
 
-For reproducibility reasons, Nix build scripts cannot hit the internet, but the auto-download
-feature does exactly that. To successfully build under Nix the user must provide the tarball locally
-and specify its location via the `BITCOIND_TARBALL_FILE` env var.
+For reproducibility reasons, Nix build scripts cannot hit the internet, but the
+auto-download feature does exactly that. To successfully build under Nix the
+user must provide the tarball locally and specify its location via the
+`BITCOIND_TARBALL_FILE` env var.
+Alternativily, use the dep without auto-download feature.
 
 ## Used by
 
