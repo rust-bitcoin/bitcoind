@@ -331,11 +331,10 @@ impl BitcoinD {
                 if client_base.call::<Value>("getblockchaininfo", &[]).is_ok() {
                     // Try creating new wallet, if fails due to already existing wallet file
                     // try loading the same. Return if still errors.
-                    if client_base
-                        .create_wallet("default", None, None, None, None)
-                        .is_err()
-                    {
-                        client_base.load_wallet("default")?;
+                    if let Err(e1) = client_base.create_wallet("default", None, None, None, None) {
+                        if let Err(e2) = client_base.load_wallet("default") {
+                            warn!("{e1:?}\n{e2:?}");
+                        }
                     }
                     break Client::new(&node_url_default, Auth::CookieFile(cookie_file.clone()))?;
                 }
@@ -511,6 +510,7 @@ mod test {
     use crate::exe_path;
     use crate::{get_available_port, BitcoinD, Conf, LOCAL_IP, P2P};
     use bitcoincore_rpc::RpcApi;
+    use std::collections::HashSet;
     use std::net::SocketAddrV4;
     use tempfile::TempDir;
 
@@ -536,6 +536,30 @@ mod test {
         let _ = bitcoind.client.generate_to_address(1, &address).unwrap();
         let info = bitcoind.client.get_blockchain_info().unwrap();
         assert_eq!(1, info.blocks);
+    }
+
+    #[test]
+    fn test_many() {
+        let exe = init();
+        const HOW_MANY: usize = 180;
+        std::thread::scope(|s| {
+            let mut handles = Vec::with_capacity(HOW_MANY);
+            for _ in 0..HOW_MANY {
+                let handle = s.spawn(|| {
+                    let bitcoind = BitcoinD::new(&exe).unwrap();
+
+                    let info = bitcoind.client.get_blockchain_info().unwrap();
+                    assert_eq!(0, info.blocks);
+                    bitcoind.work_dir.path()
+                });
+                handles.push(handle);
+            }
+            let mut set = HashSet::new();
+            while let Some(handle) = handles.pop() {
+                set.insert(handle.join().unwrap());
+            }
+            assert_eq!(set.len(), HOW_MANY);
+        });
     }
 
     #[test]
