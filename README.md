@@ -79,6 +79,7 @@ Note: to respect 1.48.0 MSRV you need to use and older version of the which and 
 like it's done in the CI:
 
 ```sh
+cargo update -p serde_json --precise 1.0.99
 cargo update -p serde --precise 1.0.152
 cargo update -p log --precise 0.4.18
 ```
