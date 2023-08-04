@@ -68,8 +68,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-      - run: cargo update -p log --precise 0.4.18
-      - run: cargo update -p serde --precise 1.0.152
+      - run: |
+          cargo update -p which --precise 4.2.5
+          cargo update -p tempfile --precise 3.3.0
+          cargo update -p log --precise 0.4.18
+          cargo update -p serde_json --precise 1.0.99
+          cargo update -p serde --precise 1.0.156
+          cargo update -p regex --precise 1.7.3
+          cargo update -p thiserror --precise 1.0.40
+          cargo update -p quote --precise 1.0.28
+          cargo update -p proc-macro2 --precise 1.0.63
+        if: ${{ matrix.toolchain == '1.48.0' }}
       - run: cargo build
 
   build-nix:
