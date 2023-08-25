@@ -65,17 +65,24 @@ pub struct ConnectParams {
     pub p2p_socket: Option<SocketAddrV4>,
 }
 
+pub struct CookieValues {
+    pub user: String,
+    pub password: String,
+}
+
 impl ConnectParams {
     /// Parses the cookie file content
-    fn parse_cookie(content: String) -> anyhow::Result<(Option<String>, Option<String>)> {
-        let values: Vec<&str> = content.splitn(2, ':').collect();
-        Ok((Some(values[0].into()), Some(values[1].into())))
+    fn parse_cookie(content: String) -> Option<CookieValues> {
+        let values: Vec<_> = content.splitn(2, ':').collect();
+        let user = values.first()?.to_string();
+        let password = values.get(1)?.to_string();
+        Some(CookieValues { user, password })
     }
 
     /// Return the user and password values from cookie file
-    pub fn get_cookie_values(&self) -> anyhow::Result<(Option<String>, Option<String>)> {
+    pub fn get_cookie_values(&self) -> Result<Option<CookieValues>, std::io::Error> {
         let cookie = std::fs::read_to_string(&self.cookie_file)?;
-        self::ConnectParams::parse_cookie(cookie)
+        Ok(self::ConnectParams::parse_cookie(cookie))
     }
 }
 
@@ -754,11 +761,10 @@ mod test {
         )
         .unwrap();
 
-        let result_values: (Option<String>, Option<String>) =
-            bitcoind.params.get_cookie_values().unwrap();
+        let result_values = bitcoind.params.get_cookie_values().unwrap().unwrap();
 
-        assert_eq!(user, result_values.0.unwrap().as_str());
-        assert_eq!(password, result_values.1.unwrap().as_str());
+        assert_eq!(user, result_values.user);
+        assert_eq!(password, result_values.password);
     }
 
     fn peers_connected(client: &Client) -> usize {
