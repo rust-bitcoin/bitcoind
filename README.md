@@ -59,7 +59,10 @@ fail (because of the initial situation, not a real failure)
   condition is still possible, for this reason the process is tried to be spawn 3 times with different
   ports.
   * The process is killed when the struct goes out of scope no matter how the test finishes
-  * Allows easy spawning of dependent process like [electrs](https://github.com/RCasatta/electrsd)
+  * Allows easy spawning of dependent processes like:
+    - [electrs](https://github.com/RCasatta/electrsd)
+    - [cln](https://github.com/RCasatta/lightningd)
+    - [elements](https://github.com/RCasatta/elementsd)
 
 Thanks to these features every `#[test]` could easily run isolated with its own environment.
 
