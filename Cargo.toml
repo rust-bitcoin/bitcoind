@@ -6,12 +6,12 @@ description = "Utility to run a regtest bitcoind process, useful in integration 
 license = "MIT"
 repository = "https://github.com/RCasatta/bitcoind"
 documentation = "https://docs.rs/bitcoind/"
-rust-version = "1.48.0"  # without features, with any feature is 1.57
+rust-version = "1.48.0"                                                                              # without features, with any feature is 1.57
 edition = "2018"
 categories = ["cryptography::cryptocurrencies", "development-tools::testing"]
 
 [dependencies]
-bitcoincore-rpc = { package="core-rpc", version = "0.17.0" }
+bitcoincore-rpc = { version = "0.17.0" }
 log = "0.4"
 which = "4.2.5"
 anyhow = "1.0.66"
@@ -22,9 +22,11 @@ env_logger = "0.9.0"
 
 [build-dependencies]
 bitcoin_hashes = { version = "0.12", optional = true }
-flate2 = { version = "1.0", optional = true } 
-tar = { version = "0.4", optional = true } 
-minreq = { version = "2.9.0", default-features = false, features = ["https"], optional = true }
+flate2 = { version = "1.0", optional = true }
+tar = { version = "0.4", optional = true }
+minreq = { version = "2.9.0", default-features = false, features = [
+    "https",
+], optional = true }
 zip = { version = "0.5", optional = true }
 anyhow = "1.0.66"
 
