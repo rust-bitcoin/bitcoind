@@ -78,12 +78,21 @@ RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --features download,doc --open
 
 The MSRV is 1.48.0 for version 0.29.* if no feature is used, otherwise is 1.57
 
-Note: to respect 1.48.0 MSRV you need to use and older version of the which and tempfile dependencies, 
-like it's done in the CI:
+Note: to respect 1.48.0 MSRV you need to use and older version of some dependencies, in CI the below
+dependency versions are pinned:
 
 ```sh
-cargo update -p serde --precise 1.0.152
+cargo update
+cargo update -p which --precise 4.2.5
+cargo update -p tempfile --precise 3.3.0
 cargo update -p log --precise 0.4.18
+cargo update -p serde_json --precise 1.0.99
+cargo update -p serde --precise 1.0.156
+cargo update -p regex --precise 1.7.3
+cargo update -p thiserror --precise 1.0.40
+cargo update -p quote --precise 1.0.28
+cargo update -p syn:2.0.37 --precise 2.0.32
+cargo update -p proc-macro2 --precise 1.0.63
 ```
 
 Pinning in `Cargo.toml` is avoided because it could cause
