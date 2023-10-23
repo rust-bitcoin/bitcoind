@@ -6,11 +6,11 @@
 
 Utility to run a regtest bitcoind process, useful in integration testing environment.
 
-When the auto-download feature is selected by activating one of the version feature, such as `25_0`
-for bitcoin core 25.0, starting a regtest node is as simple as that:
+When the auto-download feature is selected by activating one of the version feature, such as `25_1`
+for bitcoin core 25.1, starting a regtest node is as simple as that:
 
 ```rust
-// the download feature is enabled whenever a specific version is enabled, for example `25_0` or `24_0_1`
+// the download feature is enabled whenever a specific version is enabled, for example `25_1` or `24_0_1`
 #[cfg(feature = "download")]
 {
   use bitcoincore_rpc::RpcApi;
@@ -19,7 +19,7 @@ for bitcoin core 25.0, starting a regtest node is as simple as that:
 }
 ```
 
-The build script will automatically download the bitcoin core version 25.0 from [bitcoin core](https://bitcoincore.org),
+The build script will automatically download the bitcoin core version 25.1 from [bitcoin core](https://bitcoincore.org),
 verify the hashes and place it in the build directory for this crate. If you wish to download from an 
 alternate location, for example locally for CI, use the `BITCOIND_DOWNLOAD_ENDPOINT` env var.
 
