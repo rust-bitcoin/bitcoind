@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.34.0
+
+- upgrade bitcoincore dep to 0.18.0 and with it bitcoin to 0.31.0
+
 ## Release 0.28.0
 
 ### Changed
