@@ -63,6 +63,10 @@ pub struct ConnectParams {
     pub rpc_socket: SocketAddrV4,
     /// p2p connection url, is some if the node started with p2p enabled
     pub p2p_socket: Option<SocketAddrV4>,
+    /// zmq pub raw block connection url
+    pub zmq_pub_raw_block_socket: Option<SocketAddrV4>,
+    /// zmq pub raw tx connection Url
+    pub zmq_pub_raw_tx_socket: Option<SocketAddrV4>,
 }
 
 pub struct CookieValues {
@@ -217,6 +221,9 @@ pub struct Conf<'a> {
     /// happen they are used at the time the process is spawn. When retrying other available ports
     /// are returned reducing the probability of conflicts to negligible.
     pub attempts: u8,
+
+    /// Enable the ZMQ interface to be accessible.
+    pub enable_zmq: bool,
 }
 
 impl Default for Conf<'_> {
@@ -229,6 +236,7 @@ impl Default for Conf<'_> {
             tmpdir: None,
             staticdir: None,
             attempts: 3,
+            enable_zmq: false,
         }
     }
 }
@@ -284,6 +292,25 @@ impl BitcoinD {
                 (args, Some(p2p_socket))
             }
         };
+
+        let (zmq_args, zmq_pub_raw_tx_socket, zmq_pub_raw_block_socket) = match conf.enable_zmq {
+            true => {
+                let zmq_pub_raw_tx_port = get_available_port()?;
+                let zmq_pub_raw_tx_socket = SocketAddrV4::new(LOCAL_IP, zmq_pub_raw_tx_port);
+                let zmq_pub_raw_block_port = get_available_port()?;
+                let zmq_pub_raw_block_socket = SocketAddrV4::new(LOCAL_IP, zmq_pub_raw_block_port);
+                let zmqpubrawblock_arg =
+                    format!("-zmqpubrawblock=tcp://0.0.0.0:{}", zmq_pub_raw_block_port);
+                let zmqpubrawtx_arg = format!("-zmqpubrawtx=tcp://0.0.0.0:{}", zmq_pub_raw_tx_port);
+                (
+                    vec![zmqpubrawtx_arg, zmqpubrawblock_arg],
+                    Some(zmq_pub_raw_tx_socket),
+                    Some(zmq_pub_raw_block_socket),
+                )
+            }
+            false => (vec![], None, None),
+        };
+
         let stdout = if conf.view_stdout {
             Stdio::inherit()
         } else {
@@ -307,6 +334,7 @@ impl BitcoinD {
             .args(&default_args)
             .args(&p2p_args)
             .args(&conf_args)
+            .args(&zmq_args)
             .stdout(stdout)
             .spawn()
             .with_context(|| format!("Error while executing {:?}", exe.as_ref()))?;
@@ -365,6 +393,8 @@ impl BitcoinD {
                 cookie_file,
                 rpc_socket,
                 p2p_socket,
+                zmq_pub_raw_block_socket,
+                zmq_pub_raw_tx_socket,
             },
         })
     }
@@ -765,6 +795,25 @@ mod test {
 
         assert_eq!(user, result_values.user);
         assert_eq!(password, result_values.password);
+    }
+
+    #[test]
+    fn zmq_interface_enabled() {
+        let mut conf = Conf::default();
+        conf.enable_zmq = true;
+        let bitcoind = BitcoinD::with_conf(exe_path().unwrap(), &conf).unwrap();
+
+        assert!(bitcoind.params.zmq_pub_raw_tx_socket.is_some());
+        assert!(bitcoind.params.zmq_pub_raw_block_socket.is_some());
+    }
+
+    #[test]
+    fn zmq_interface_disabled() {
+        let exe = init();
+        let bitcoind = BitcoinD::new(exe).unwrap();
+
+        assert!(bitcoind.params.zmq_pub_raw_tx_socket.is_none());
+        assert!(bitcoind.params.zmq_pub_raw_block_socket.is_none());
     }
 
     fn peers_connected(client: &Client) -> usize {
