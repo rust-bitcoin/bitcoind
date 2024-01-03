@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.34.1
+
+- Optionally enable ZMQ
+
 ## Release 0.34.0
 
 - upgrade bitcoincore dep to 0.18.0 and with it bitcoin to 0.31.0
