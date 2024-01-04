@@ -94,7 +94,7 @@ mod download {
             let (file_or_url, tarball_bytes) = match std::env::var("BITCOIND_TARBALL_FILE") {
                 Err(_) => {
                     let download_endpoint = std::env::var("BITCOIND_DOWNLOAD_ENDPOINT")
-                        .unwrap_or("https://bitcoincore.org/bin/".to_owned());
+                        .unwrap_or("https://bitcoincore.org/bin".to_owned());
 
                     let url = format!(
                         "{}/bitcoin-core-{}/{}",
