@@ -55,7 +55,7 @@ fail (because of the initial situation, not a real failure)
   * It waits until bitcoind daemon become ready to accept RPC commands
   * `bitcoind` use a temporary directory as datadir. You can specify the root of your temp directories 
   so that you have node's datadir in a RAM disk (eg `/dev/shm`)
-  * Free ports are asked to the OS. Since you can't reserve the given portm a low probability race 
+  * Free ports are asked to the OS. Since you can't reserve the given port, a low probability race 
   condition is still possible, for this reason the process is tried to be spawn 3 times with different
   ports.
   * The process is killed when the struct goes out of scope no matter how the test finishes
