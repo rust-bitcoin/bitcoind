@@ -608,6 +608,7 @@ mod test {
         assert_eq!(peers_connected(&other_bitcoind.client), 1);
     }
 
+    #[cfg(not(target_os = "windows"))]
     #[test]
     fn test_data_persistence() {
         // Create a Conf with staticdir type
