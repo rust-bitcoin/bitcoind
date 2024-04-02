@@ -96,6 +96,10 @@ For reproducibility reasons, Nix build scripts cannot hit the internet, but the
 auto-download feature does exactly that. To successfully build under Nix the
 user must provide the tarball locally and specify its location via the
 `BITCOIND_TARBALL_FILE` env var.
+
+Another option is to specify the `SKIP_DOWNLOAD` env var and provide the
+executable via the `PATH`.
+
 Alternatively, use the dep without auto-download feature.
 
 ## Used by
