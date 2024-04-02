@@ -71,6 +71,9 @@ mod download {
     }
 
     pub(crate) fn start() -> anyhow::Result<()> {
+        if std::env::var_os("SKIP_DOWNLOAD").is_some() {
+            return Ok(());
+        }
         let download_filename = download_filename();
         let expected_hash = get_expected_sha256(&download_filename)?;
         let out_dir = std::env::var_os("OUT_DIR").unwrap();

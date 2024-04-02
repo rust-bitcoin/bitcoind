@@ -123,6 +123,8 @@ pub enum Error {
     /// Returned when -rpcuser and/or -rpcpassword is used in `Conf` args
     /// It will soon be deprecated, please use -rpcauth instead
     RpcUserAndPasswordUsed,
+    /// Returned when expecting an auto-downloaded executable but `SKIP_DOWNLOAD` env var is set
+    SkipDownload,
 }
 
 impl fmt::Debug for Error {
@@ -135,7 +137,8 @@ impl fmt::Debug for Error {
             Error::NoBitcoindExecutableFound =>  write!(f, "`bitcoind` executable is required, provide it with one of the following: set env var `BITCOIND_EXE` or use a feature like \"22_1\" or have `bitcoind` executable in the `PATH`"),
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
             Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options"),
-            Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication")
+            Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication"),
+            Error::SkipDownload => write!(f, "expecting an auto-downloaded executable but `SKIP_DOWNLOAD` env var is set"),
         }
     }
 }
@@ -496,6 +499,10 @@ pub fn downloaded_exe_path() -> anyhow::Result<String> {
 /// Provide the bitcoind executable path if a version feature has been specified
 #[cfg(feature = "download")]
 pub fn downloaded_exe_path() -> anyhow::Result<String> {
+    if std::env::var_os("SKIP_DOWNLOAD").is_some() {
+        return Err(Error::SkipDownload.into());
+    }
+
     let mut path: PathBuf = env!("OUT_DIR").into();
     path.push("bitcoin");
     path.push(format!("bitcoin-{}", versions::VERSION));
