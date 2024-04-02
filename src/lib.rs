@@ -331,7 +331,7 @@ impl BitcoinD {
         );
 
         let mut process = Command::new(exe.as_ref())
-            .args(&default_args)
+            .args(default_args)
             .args(&p2p_args)
             .args(&conf_args)
             .args(&zmq_args)
@@ -608,7 +608,7 @@ mod test {
         assert_eq!(peers_connected(&other_bitcoind.client), 1);
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(target_os = "windows"))] // TODO: investigate why it doesn't work in windows
     #[test]
     fn test_data_persistence() {
         // Create a Conf with staticdir type
