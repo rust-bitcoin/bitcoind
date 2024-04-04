@@ -123,7 +123,7 @@ pub enum Error {
     /// Returned when -rpcuser and/or -rpcpassword is used in `Conf` args
     /// It will soon be deprecated, please use -rpcauth instead
     RpcUserAndPasswordUsed,
-    /// Returned when expecting an auto-downloaded executable but `SKIP_DOWNLOAD` env var is set
+    /// Returned when expecting an auto-downloaded executable but `BITCOIND_SKIP_DOWNLOAD` env var is set
     SkipDownload,
 }
 
@@ -138,7 +138,7 @@ impl fmt::Debug for Error {
             Error::EarlyExit(e) => write!(f, "The bitcoind process terminated early with exit code {}", e),
             Error::BothDirsSpecified => write!(f, "tempdir and staticdir cannot be enabled at same time in configuration options"),
             Error::RpcUserAndPasswordUsed => write!(f, "`-rpcuser` and `-rpcpassword` cannot be used, it will be deprecated soon and it's recommended to use `-rpcauth` instead which works alongside with the default cookie authentication"),
-            Error::SkipDownload => write!(f, "expecting an auto-downloaded executable but `SKIP_DOWNLOAD` env var is set"),
+            Error::SkipDownload => write!(f, "expecting an auto-downloaded executable but `BITCOIND_SKIP_DOWNLOAD` env var is set"),
         }
     }
 }
@@ -499,7 +499,7 @@ pub fn downloaded_exe_path() -> anyhow::Result<String> {
 /// Provide the bitcoind executable path if a version feature has been specified
 #[cfg(feature = "download")]
 pub fn downloaded_exe_path() -> anyhow::Result<String> {
-    if std::env::var_os("SKIP_DOWNLOAD").is_some() {
+    if std::env::var_os("BITCOIND_SKIP_DOWNLOAD").is_some() {
         return Err(Error::SkipDownload.into());
     }
 
