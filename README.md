@@ -26,7 +26,7 @@ alternate location, for example locally for CI, use the `BITCOIND_DOWNLOAD_ENDPO
 When you don't use the auto-download feature you have the following options:
 
 * have `bitcoind` executable in the `PATH`
-* provide the `bitcoind` executable via the `BITCOIND_EXEC` env var
+* provide the `bitcoind` executable via the `BITCOIND_EXE` env var
 
 ```rust
 use bitcoincore_rpc::RpcApi;
