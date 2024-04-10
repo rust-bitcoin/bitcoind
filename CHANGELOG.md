@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.35.2
+
+- Use range dependencies for `bitcoincore-rpc` and `bitcoin_hashes`
+
 ## Release 0.35.1
 
 - Bump MSRV to 1.56.1
