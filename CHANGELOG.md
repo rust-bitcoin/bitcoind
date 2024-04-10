@@ -1,5 +1,14 @@
 # Changelog
 
+## Release 0.35.1
+
+- Bump MSRV to 1.56.1
+- Add `BITCOIND_SKIP_DOWNLOAD` build feature
+
+## Release 0.34.2
+
+- Support Bitcoin Core 26.0
+
 ## Release 0.34.1
 
 - Optionally enable ZMQ
