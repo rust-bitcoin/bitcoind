@@ -21,6 +21,7 @@ jobs:
         os: [ubuntu-20.04]
         feature:
           [
+            "26_0",
             "25_1",
             "25_0",
             "24_0_1",
@@ -34,9 +35,9 @@ jobs:
           ]
         include:
           - os: "macos-11"
-            feature: "25_1"
+            feature: "26_0"
           - os: "windows-2019"
-            feature: "25_1"
+            feature: "26_0"
 
     steps:
       - run: df -h
