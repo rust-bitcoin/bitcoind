@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.36.0
+
+- Remove range dependencies for `bitcoincore-rpc` and depend on the
+  latest version `v0.19.0` [#163](https://github.com/rust-bitcoin/bitcoind/pull/163).
+
 ## 0.35.2
 
 - Use range dependencies for `bitcoincore-rpc` and `bitcoin_hashes`

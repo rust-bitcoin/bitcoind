@@ -1,6 +1,6 @@
 [package]
 name = "bitcoind"
-version = "0.35.2"
+version = "0.36.0"
 authors = ["Riccardo Casatta <riccardo@casatta.it>"]
 description = "Utility to run a regtest bitcoind process, useful in integration testing environment"
 license = "MIT"
@@ -11,7 +11,7 @@ edition = "2018"
 categories = ["cryptography::cryptocurrencies", "development-tools::testing"]
 
 [dependencies]
-bitcoincore-rpc = { version = ">= 0.17.0, <= 0.19" }
+bitcoincore-rpc = { version = "0.19", features = ["rand"] }
 log = "0.4"
 which = "4.2.5"
 anyhow = "1.0.66"
