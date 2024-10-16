@@ -1,3 +1,6 @@
+#[cfg(feature = "28_0")]
+pub const VERSION: &str = "28.0";
+
 #[cfg(feature = "26_0")]
 pub const VERSION: &str = "26.0";
 
