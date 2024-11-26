@@ -1,3 +1,10 @@
+**🚧 IMPORTANT 🚧**
+
+Development of this repo has been [moved](https://github.com/rust-bitcoin/corepc/tree/master/node) 🚚.
+The associated crate is [`corepc-node`](https://crates.io/crates/corepc-node)
+Keeping this for a while in case we need backport, then we are going to archive this.
+
+
 [![MIT license](https://img.shields.io/github/license/RCasatta/bitcoind)](https://github.com/RCasatta/bitcoind/blob/master/LICENSE)
 [![Crates](https://img.shields.io/crates/v/bitcoind.svg)](https://crates.io/crates/bitcoind)
 [![Docs](https://img.shields.io/badge/docs.rs-bitcoind-green)](https://docs.rs/bitcoind)
